@@ -1,0 +1,25 @@
+swagger: '2.0'
+info:
+  title: Project Spiderweb Service
+  description: |
+    # Introduction
+    This is the official internal API documentation for the Project Spiderweb Service.
+  contact:
+    name: Austin Glenn
+  version: 1.0.0
+host: NA
+basePath: /api
+schemes:
+- https
+consumes:
+- application/json
+produces:
+- application/json
+securityDefinitions:
+  'Local Development':
+    type: basic
+    description: |
+      When hitting a local run of the service, you may bypass security and instead pass in the following headers:
+      * **X-USER-ID**: the user that you want to behave as.
+security:
+  - 'Local Development': []
