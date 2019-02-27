@@ -23,12 +23,18 @@ type NonAuthRoute struct {
 
 // RouterHandlers are the handlers that are used for the routes.
 type RouterHandlers struct {
-	PageHandler PageHandler
+	PageHandler        PageHandler
+	HealthcheckHandler HealthcheckHandler
 }
 
 // PageHandler see handlers for more details.
 type PageHandler interface {
 	CreatePage(w http.ResponseWriter, r *http.Request, p httprouter.Params)
+}
+
+// HealthcheckHandler see handlers for more details.
+type HealthcheckHandler interface {
+	IsHealthy(w http.ResponseWriter, r *http.Request, p httprouter.Params)
 }
 
 // NewRouter adds the routes to a new handler and returns the handler with non-auth routes.
@@ -53,6 +59,7 @@ func newNonAuthRoutes() []NonAuthRoute {
 
 func handleAuthRoutes(handler *httprouter.Router, apiPath string, routerHandlers RouterHandlers) {
 	handler.POST(fmt.Sprintf("/%v/page", apiPath), routerHandlers.PageHandler.CreatePage)
+	handler.GET(fmt.Sprintf("/%v/healthcheck", apiPath), routerHandlers.HealthcheckHandler.IsHealthy)
 }
 
 func handleNonAuthRoutes(handler *httprouter.Router, nonAuthRoutes []NonAuthRoute) {

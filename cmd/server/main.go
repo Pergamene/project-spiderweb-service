@@ -11,6 +11,7 @@ import (
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
 	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers"
+	"github.com/Pergamene/project-spiderweb-service/internal/services/healthcheckservice"
 	"github.com/Pergamene/project-spiderweb-service/internal/services/pageservice"
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/mysqlstore"
 	"github.com/Pergamene/project-spiderweb-service/internal/util/env"
@@ -93,6 +94,7 @@ func main() {
 		WriteTimeout:   getHTTPServerWriteTimeout(),
 		MaxHeaderBytes: getHTTPServerMaxHeaderBytes(),
 	}
+	fmt.Printf("Starting server at http://localhost%v\nVerify locally by running:\ncurl -X GET http://localhost%v/%v/healthcheck\n", getHTTPServerAddr(), getHTTPServerAddr(), getAPIPath())
 	log.Fatal(s.ListenAndServe())
 }
 
@@ -144,12 +146,19 @@ func getMySQLCharset() string {
 func setupHandler(apiPath, staticPath, datacenter string, mysqldb *sql.DB) (http.Handler, error) {
 	var handler http.Handler
 	pageStore := mysqlstore.NewPageStore(mysqldb)
+	healthcheckStore := mysqlstore.NewHealthcheckStore(mysqldb)
 	pageService := pageservice.PageService{
 		PageStore: pageStore,
+	}
+	healthcheckService := healthcheckservice.HealthcheckService{
+		HealthcheckStore: healthcheckStore,
 	}
 	routerHandlers := api.RouterHandlers{
 		PageHandler: handlers.PageHandler{
 			PageService: pageService,
+		},
+		HealthcheckHandler: handlers.HealthcheckHandler{
+			HealthcheckService: healthcheckService,
 		},
 	}
 	router := api.NewRouter(apiPath, staticPath, routerHandlers)
