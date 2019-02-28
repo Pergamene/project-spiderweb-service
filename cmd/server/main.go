@@ -73,6 +73,7 @@ func getDatacenter() string {
 func main() {
 	mysqldb, err := setupMySQL()
 	if err != nil {
+		fmt.Printf("Failed to connect to MySQL db.\nIf connecting locally, follow https://github.com/Pergamene/project-spiderweb-db/blob/master/README.md to get the local db running.\n")
 		log.Fatal(err)
 	}
 	defer mysqldb.Close()

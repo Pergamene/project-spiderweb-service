@@ -8,6 +8,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	PageIDRouteKey = "pageID"
+)
+
 // Router handles the API routes
 type Router struct {
 	http.Handler
@@ -59,6 +63,7 @@ func newNonAuthRoutes() []NonAuthRoute {
 
 func handleAuthRoutes(handler *httprouter.Router, apiPath string, routerHandlers RouterHandlers) {
 	handler.POST(fmt.Sprintf("/%v/page", apiPath), routerHandlers.PageHandler.CreatePage)
+	handler.PUT(fmt.Sprintf("/%v/page/:%v", apiPath, PageIDRouteKey), routerHandlers.PageHandler.CreatePage)
 	handler.GET(fmt.Sprintf("/%v/healthcheck", apiPath), routerHandlers.HealthcheckHandler.IsHealthy)
 }
 

@@ -33,3 +33,22 @@ func (s PageService) CreatePage(ctx context.Context, params CreatePageParams) (p
 	}
 	return page, nil
 }
+
+// UpdatePageParams params for UpdatePage
+type UpdatePageParams struct {
+	Page   page.Page
+	UserID string
+}
+
+// UpdatePage Updates a new page.
+func (s PageService) UpdatePage(ctx context.Context, params UpdatePageParams) error {
+	_, err := s.PageStore.AssertCanModifyPage(params.Page.GUID, params.UserID)
+	if err != nil {
+		return err
+	}
+	err = s.PageStore.UpdatePage(params.Page)
+	if err != nil {
+		return errors.Wrapf(err, "failed to update page: %+v", params)
+	}
+	return nil
+}
