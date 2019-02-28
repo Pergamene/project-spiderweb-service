@@ -1,0 +1,5 @@
+cmd/server/server
+*.log
+.DS_Store
+*.out
+.vscode/*

@@ -42,7 +42,7 @@ type UpdatePageParams struct {
 
 // UpdatePage Updates a new page.
 func (s PageService) UpdatePage(ctx context.Context, params UpdatePageParams) error {
-	_, err := s.PageStore.AssertCanModifyPage(params.Page.GUID, params.UserID)
+	_, err := s.PageStore.CanModifyPage(params.Page.GUID, params.UserID)
 	if err != nil {
 		return err
 	}

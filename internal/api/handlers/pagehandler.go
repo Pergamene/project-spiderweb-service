@@ -16,7 +16,7 @@ import (
 // PageService see Service for more details
 type PageService interface {
 	CreatePage(ctx context.Context, params pageservice.CreatePageParams) (page.Page, error)
-	UpdatePage(ctx context.Context, params pageservice.UpdatePageParams) (page.Page, error)
+	UpdatePage(ctx context.Context, params pageservice.UpdatePageParams) error
 }
 
 // PageHandler is the handler for page API
@@ -68,7 +68,7 @@ func (h PageHandler) UpdatePage(w http.ResponseWriter, r *http.Request, p httpro
 		api.RespondWith(r, w, http.StatusInternalServerError, &api.InternalErr{}, errors.Wrap(err, "failed to get auth data"))
 		return
 	}
-	err := h.PageService.UpdatePage(ctx, pageservice.UpdatePageParams{
+	err = h.PageService.UpdatePage(ctx, pageservice.UpdatePageParams{
 		Page: page.Page{
 			GUID:    request.GUID,
 			Title:   request.Title,

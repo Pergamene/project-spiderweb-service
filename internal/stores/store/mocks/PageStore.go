@@ -9,8 +9,8 @@ type PageStore struct {
 	mock.Mock
 }
 
-// AssertCanModifyPage provides a mock function with given fields: pageGUID, userID
-func (_m *PageStore) AssertCanModifyPage(pageGUID string, userID string) (bool, error) {
+// CanModifyPage provides a mock function with given fields: pageGUID, userID
+func (_m *PageStore) CanModifyPage(pageGUID string, userID string) (bool, error) {
 	ret := _m.Called(pageGUID, userID)
 
 	var r0 bool
