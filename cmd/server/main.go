@@ -36,11 +36,6 @@ const (
 	defaultDatacenter      = "LOCAL"
 )
 
-// Indexer sets up indices for the appropriate data store
-type Indexer interface {
-	EnsureIndices() error
-}
-
 func getHTTPServerAddr() string {
 	port := env.Get("PORT", defaultPort)
 	return ":" + port
@@ -67,7 +62,7 @@ func getStaticPath() string {
 }
 
 func getDatacenter() string {
-	return env.Get("DATACENTER", defaultDatacenter)
+	return env.Get("DATACENTER", api.LocalDatacenterEnv)
 }
 
 func main() {
@@ -192,14 +187,14 @@ func getAuths(apiPath, datacenter string) (api.AuthN, api.AuthZ, error) {
 }
 
 func getAdminAuthSecret(datacenter string) (string, error) {
-	if datacenter != api.LocalEnv {
+	if datacenter != api.LocalDatacenterEnv {
 		return env.Require("ADMIN_AUTH_SECRET")
 	}
 	return env.Get("ADMIN_AUTH_SECRET", defaultAdminAuthSecret), nil
 }
 
 func setupCors(datacenter string, handler http.Handler) (http.Handler, error) {
-	if datacenter != api.LocalEnv {
+	if datacenter != api.LocalDatacenterEnv {
 		return handler, nil
 	}
 	c := cors.New(cors.Options{

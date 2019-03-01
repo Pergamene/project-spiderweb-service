@@ -36,7 +36,7 @@ func (a AuthN) Authenticate(r *http.Request) (AuthData, error) {
 }
 
 func (a AuthN) isAdmin(r *http.Request) bool {
-	return r.Header.Get("X-ADMIN-AUTH-SECRET") == a.AdminAuthSecret || a.Datacenter == LocalEnv
+	return r.Header.Get("X-ADMIN-AUTH-SECRET") == a.AdminAuthSecret || a.Datacenter == LocalDatacenterEnv
 }
 
 func (a AuthN) hasUserID(r *http.Request) bool {
