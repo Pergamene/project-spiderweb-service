@@ -1,4 +1,4 @@
-package handlers
+package pagehandler
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
-	"github.com/Pergamene/project-spiderweb-service/internal/services/pageservice"
+	"github.com/Pergamene/project-spiderweb-service/internal/services/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/storeerror"
 
 	"github.com/julienschmidt/httprouter"

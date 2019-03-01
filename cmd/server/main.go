@@ -10,9 +10,10 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
-	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers"
-	"github.com/Pergamene/project-spiderweb-service/internal/services/healthcheckservice"
-	"github.com/Pergamene/project-spiderweb-service/internal/services/pageservice"
+	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/healthcheck"
+	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/page"
+	"github.com/Pergamene/project-spiderweb-service/internal/services/healthcheck"
+	"github.com/Pergamene/project-spiderweb-service/internal/services/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/mysqlstore"
 	"github.com/Pergamene/project-spiderweb-service/internal/util/env"
 	"github.com/rs/cors"
@@ -150,10 +151,10 @@ func setupHandler(apiPath, staticPath, datacenter string, mysqldb *sql.DB) (http
 		HealthcheckStore: healthcheckStore,
 	}
 	routerHandlers := api.RouterHandlers{
-		PageHandler: handlers.PageHandler{
+		PageHandler: pagehandler.PageHandler{
 			PageService: pageService,
 		},
-		HealthcheckHandler: handlers.HealthcheckHandler{
+		HealthcheckHandler: healthcheckhandler.HealthcheckHandler{
 			HealthcheckService: healthcheckService,
 		},
 	}

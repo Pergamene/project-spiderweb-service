@@ -87,6 +87,6 @@ func handleMethodNotAllowed(w http.ResponseWriter, r *http.Request) {
 
 func panicHandler() func(http.ResponseWriter, *http.Request, interface{}) {
 	return func(w http.ResponseWriter, r *http.Request, e interface{}) {
-		RespondWith(r, w, http.StatusInternalServerError, &InternalErr{}, errors.New("panicked"))
+		RespondWith(r, w, http.StatusInternalServerError, &InternalErr{}, errors.Errorf("panicked\n%+v", e))
 	}
 }

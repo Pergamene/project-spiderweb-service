@@ -33,7 +33,10 @@ func RespondWith(r *http.Request, w http.ResponseWriter, status int, responseDat
 		defer logger.Sync()
 		logger.Info("Response error",
 			zap.String("err", errToLog.Error()),
+			zap.String("errVerbose", fmt.Sprintf("%+v", errToLog)),
 		)
+		// @DEBUG: probably shouldn't have, but need to handler tests to get clean output
+		fmt.Printf("%+v\n", errToLog)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
