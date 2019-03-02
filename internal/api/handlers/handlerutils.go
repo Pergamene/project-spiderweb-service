@@ -8,8 +8,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
-	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/healthcheck"
-	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/page"
 )
 
 // HandleTestRequestParams are the params for the HandleTestRequest function.
@@ -18,7 +16,7 @@ type HandleTestRequestParams struct {
 	Endpoint       string
 	Headers        map[string]string
 	Body           *io.Reader
-	RouterHandlers api.RouterHandlers
+	RouterHandlers []api.RouterHandler
 	AuthZ          api.AuthZ
 	AuthN          api.AuthN
 }
@@ -43,13 +41,4 @@ func HandleTestRequest(p HandleTestRequestParams) (*http.Response, string) {
 	resp := w.Result()
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	return resp, string(respBody)
-}
-
-// GetBaseRouterHandlers returns a RouterHandlers with default handler instantiation.
-// This is to ensure no nil pointers are referenced.
-func GetBaseRouterHandlers() api.RouterHandlers {
-	return api.RouterHandlers{
-		HealthcheckHandler: healthcheckhandler.HealthcheckHandler{},
-		PageHandler:        pagehandler.PageHandler{},
-	}
 }

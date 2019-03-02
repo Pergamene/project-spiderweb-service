@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
-	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers"
+	handlerutils "github.com/Pergamene/project-spiderweb-service/internal/api/handlers"
 	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/healthcheck/mocks"
 	"github.com/Pergamene/project-spiderweb-service/internal/util/testutils"
 	"github.com/stretchr/testify/mock"
@@ -104,11 +104,7 @@ func TestIsHealthy(t *testing.T) {
 		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
 			healthcheckService := new(mocks.HealthcheckService)
 			healthcheckService.On("IsHealthy", mock.Anything).Return(tc.serviceIsHealthyReturnIsHealthy, tc.serviceIsHealthyReturnErr)
-			healthcheckHandler := HealthcheckHandler{
-				HealthcheckService: healthcheckService,
-			}
-			routerHandlers := handlerutils.GetBaseRouterHandlers()
-			routerHandlers.HealthcheckHandler = healthcheckHandler
+			routerHandlers := HealthcheckRouterHandlers(tc.authZ.APIPath, healthcheckService)
 			resp, respBody := handlerutils.HandleTestRequest(handlerutils.HandleTestRequestParams{
 				Method:         http.MethodGet,
 				Endpoint:       "healthcheck",

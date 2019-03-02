@@ -58,7 +58,7 @@ func TestAPI(t *testing.T) {
 				Endpoint:       tc.endpoint,
 				Headers:        tc.headers,
 				Body:           nil,
-				RouterHandlers: GetBaseRouterHandlers(),
+				RouterHandlers: []api.RouterHandler{},
 				AuthZ:          tc.authZ,
 				AuthN:          tc.authN,
 			})

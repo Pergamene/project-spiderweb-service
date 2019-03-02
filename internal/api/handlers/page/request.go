@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/Pergamene/project-spiderweb-service/internal/api"
 	"github.com/julienschmidt/httprouter"
 	"github.com/pkg/errors"
 )
@@ -46,7 +45,7 @@ func NewUpdatePageRequest(r *http.Request, p httprouter.Params) (UpdatePageReque
 	if err != nil {
 		return request, errors.New("invalid request")
 	}
-	request.GUID = p.ByName(api.PageIDRouteKey)
+	request.GUID = p.ByName(PageIDRouteKey)
 	return request.validate()
 }
 
