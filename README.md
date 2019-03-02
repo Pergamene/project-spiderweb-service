@@ -44,6 +44,8 @@ go get https://github.com/Pergamene/project-spiderweb-service
 
 ### Testing
 
+First, install testify, which is used for unit test mocks and assertions: `go get github.com/stretchr/testify`.
+
 To run the unit tests, you can run `go test ./...`.
 
 ### Build
