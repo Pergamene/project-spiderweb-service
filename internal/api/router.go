@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// HTTP path fragments keys
 const (
 	PageIDRouteKey = "pageID"
 )
