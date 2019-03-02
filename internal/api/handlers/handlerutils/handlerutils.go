@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
 )
@@ -14,8 +15,9 @@ import (
 type HandleTestRequestParams struct {
 	Method         string
 	Endpoint       string
+	Params         url.Values
 	Headers        map[string]string
-	Body           *io.Reader
+	Body           io.Reader
 	RouterHandlers []api.RouterHandler
 	AuthZ          api.AuthZ
 	AuthN          api.AuthN
@@ -31,8 +33,12 @@ func HandleTestRequest(p HandleTestRequestParams) (*http.Response, string) {
 		Datacenter: p.AuthN.Datacenter,
 		APIPath:    p.AuthZ.APIPath,
 	}
-	url := fmt.Sprintf("http://test.com/%v/%v", p.AuthZ.APIPath, p.Endpoint)
-	r := httptest.NewRequest(p.Method, url, nil)
+	uri := fmt.Sprintf("http://test.com/%v/%v", p.AuthZ.APIPath, p.Endpoint)
+	params := p.Params.Encode()
+	if params != "" {
+		uri = uri + "?" + params
+	}
+	r := httptest.NewRequest(p.Method, uri, p.Body)
 	for key, value := range p.Headers {
 		r.Header.Set(key, value)
 	}
@@ -41,4 +47,19 @@ func HandleTestRequest(p HandleTestRequestParams) (*http.Response, string) {
 	resp := w.Result()
 	respBody, _ := ioutil.ReadAll(resp.Body)
 	return resp, string(respBody)
+}
+
+// DefaultAuthN is a quick way to pass in the AuthN struct to a test
+func DefaultAuthN(datacenter string) api.AuthN {
+	return api.AuthN{
+		Datacenter:      datacenter,
+		AdminAuthSecret: "SECRET",
+	}
+}
+
+// DefaultAuthZ is a quick way to pass in the AuthZ struct to a test
+func DefaultAuthZ() api.AuthZ {
+	return api.AuthZ{
+		APIPath: "api/test",
+	}
 }

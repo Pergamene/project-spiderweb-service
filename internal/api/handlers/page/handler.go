@@ -6,7 +6,8 @@ import (
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
-	"github.com/Pergamene/project-spiderweb-service/internal/services/page"
+	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
+	pageservice "github.com/Pergamene/project-spiderweb-service/internal/services/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/storeerror"
 
 	"github.com/julienschmidt/httprouter"
@@ -41,6 +42,10 @@ func (h PageHandler) CreatePage(w http.ResponseWriter, r *http.Request, p httpro
 		Page: page.Page{
 			Title:   request.Title,
 			Summary: request.Summary,
+			Version: version.Version{
+				ID: request.VersionID,
+			},
+			PermissionType: request.PermissionType,
 		},
 		OwnerID: authData.UserID,
 	})

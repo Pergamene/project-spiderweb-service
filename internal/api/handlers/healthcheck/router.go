@@ -1,4 +1,4 @@
-package healthcheckrouter
+package healthcheckhandler
 
 import (
 	"context"
@@ -18,8 +18,8 @@ type HealthcheckService interface {
 	IsHealthy(ctx context.Context) (bool, error)
 }
 
-// Handlers returns the requests for the associated routes.
-func Handlers(apiPath string, healthcheckService HealthcheckService) []api.RouterHandler {
+// HealthcheckRouterHandlers returns the requests for the associated routes.
+func HealthcheckRouterHandlers(apiPath string, healthcheckService HealthcheckService) []api.RouterHandler {
 	healthcheckHandler := HealthcheckHandler{
 		HealthcheckService: healthcheckService,
 	}
