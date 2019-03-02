@@ -8,11 +8,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// HTTP path fragments keys
-const (
-	PageIDRouteKey = "pageID"
-)
-
 // Router handles the API routes
 type Router struct {
 	http.Handler
@@ -26,26 +21,17 @@ type NonAuthRoute struct {
 	Handler httprouter.Handle
 }
 
-// RouterHandlers are the handlers that are used for the routes.
-type RouterHandlers struct {
-	PageHandler        PageHandler
-	HealthcheckHandler HealthcheckHandler
-}
-
-// PageHandler see handlers for more details.
-type PageHandler interface {
-	CreatePage(w http.ResponseWriter, r *http.Request, p httprouter.Params)
-}
-
-// HealthcheckHandler see handlers for more details.
-type HealthcheckHandler interface {
-	IsHealthy(w http.ResponseWriter, r *http.Request, p httprouter.Params)
+// RouterHandler is the information needed to establish a handle for the route.
+type RouterHandler struct {
+	Method   string
+	Endpoint string
+	Handle   httprouter.Handle
 }
 
 // NewRouter adds the routes to a new handler and returns the handler with non-auth routes.
-func NewRouter(apiPath, staticPath string, routerHandlers RouterHandlers) Router {
+func NewRouter(apiPath, staticPath string, routerHandlers []RouterHandler) Router {
 	handler := httprouter.New()
-	handleAuthRoutes(handler, apiPath, routerHandlers)
+	handleAuthRoutes(handler, routerHandlers)
 	nonAuthRoutes := newNonAuthRoutes()
 	handleNonAuthRoutes(handler, nonAuthRoutes)
 	serveFiles(handler, apiPath, staticPath)
@@ -62,10 +48,26 @@ func newNonAuthRoutes() []NonAuthRoute {
 	return []NonAuthRoute{}
 }
 
-func handleAuthRoutes(handler *httprouter.Router, apiPath string, routerHandlers RouterHandlers) {
-	handler.POST(fmt.Sprintf("/%v/page", apiPath), routerHandlers.PageHandler.CreatePage)
-	handler.PUT(fmt.Sprintf("/%v/page/:%v", apiPath, PageIDRouteKey), routerHandlers.PageHandler.CreatePage)
-	handler.GET(fmt.Sprintf("/%v/healthcheck", apiPath), routerHandlers.HealthcheckHandler.IsHealthy)
+func handleAuthRoutes(handler *httprouter.Router, routerHandlers []RouterHandler) {
+	for _, routerHandler := range routerHandlers {
+		handleAuthRoute(handler, routerHandler)
+	}
+}
+
+func handleAuthRoute(handler *httprouter.Router, routerHandler RouterHandler) {
+	if routerHandler.Method == http.MethodGet {
+		handler.GET(routerHandler.Endpoint, routerHandler.Handle)
+	} else if routerHandler.Method == http.MethodPut {
+		handler.PUT(routerHandler.Endpoint, routerHandler.Handle)
+	} else if routerHandler.Method == http.MethodPost {
+		handler.POST(routerHandler.Endpoint, routerHandler.Handle)
+	} else if routerHandler.Method == http.MethodDelete {
+		handler.DELETE(routerHandler.Endpoint, routerHandler.Handle)
+	} else if routerHandler.Method == http.MethodPatch {
+		handler.PATCH(routerHandler.Endpoint, routerHandler.Handle)
+	} else if routerHandler.Method == http.MethodOptions {
+		handler.OPTIONS(routerHandler.Endpoint, routerHandler.Handle)
+	}
 }
 
 func handleNonAuthRoutes(handler *httprouter.Router, nonAuthRoutes []NonAuthRoute) {

@@ -23,30 +23,11 @@ func TestAPI(t *testing.T) {
 		expectedStatusCode   int
 	}{
 		{
-			name:     "bad method call",
-			method:   http.MethodPost,
-			endpoint: "healthcheck",
-			authN: api.AuthN{
-				Datacenter:      "LOCAL",
-				AdminAuthSecret: "SECRET",
-			},
-			authZ: api.AuthZ{
-				APIPath: "api/test",
-			},
-			expectedResponseBody: "{\"meta\":{\"httpStatus\":\"405 - Method Not Allowed\",\"message\":\"method not allowed\"}}\n",
-			expectedStatusCode:   405,
-		},
-		{
-			name:     "bad endpoint call",
-			method:   http.MethodGet,
-			endpoint: "doesnotexist",
-			authN: api.AuthN{
-				Datacenter:      "LOCAL",
-				AdminAuthSecret: "SECRET",
-			},
-			authZ: api.AuthZ{
-				APIPath: "api/test",
-			},
+			name:                 "bad endpoint call",
+			method:               http.MethodGet,
+			endpoint:             "doesnotexist",
+			authN:                DefaultAuthN("LOCAL"),
+			authZ:                DefaultAuthZ(),
 			expectedResponseBody: "{\"meta\":{\"httpStatus\":\"404 - Not Found\",\"message\":\"not found\"}}\n",
 			expectedStatusCode:   404,
 		},
@@ -58,7 +39,7 @@ func TestAPI(t *testing.T) {
 				Endpoint:       tc.endpoint,
 				Headers:        tc.headers,
 				Body:           nil,
-				RouterHandlers: GetBaseRouterHandlers(),
+				RouterHandlers: []api.RouterHandler{},
 				AuthZ:          tc.authZ,
 				AuthN:          tc.authN,
 			})

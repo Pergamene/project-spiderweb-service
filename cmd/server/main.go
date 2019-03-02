@@ -10,10 +10,10 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
-	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/healthcheck"
-	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/page"
-	"github.com/Pergamene/project-spiderweb-service/internal/services/healthcheck"
-	"github.com/Pergamene/project-spiderweb-service/internal/services/page"
+	healthcheckhandler "github.com/Pergamene/project-spiderweb-service/internal/api/handlers/healthcheck"
+	pagehandler "github.com/Pergamene/project-spiderweb-service/internal/api/handlers/page"
+	healthcheckservice "github.com/Pergamene/project-spiderweb-service/internal/services/healthcheck"
+	pageservice "github.com/Pergamene/project-spiderweb-service/internal/services/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/mysqlstore"
 	"github.com/Pergamene/project-spiderweb-service/internal/util/env"
 	"github.com/rs/cors"
@@ -150,14 +150,9 @@ func setupHandler(apiPath, staticPath, datacenter string, mysqldb *sql.DB) (http
 	healthcheckService := healthcheckservice.HealthcheckService{
 		HealthcheckStore: healthcheckStore,
 	}
-	routerHandlers := api.RouterHandlers{
-		PageHandler: pagehandler.PageHandler{
-			PageService: pageService,
-		},
-		HealthcheckHandler: healthcheckhandler.HealthcheckHandler{
-			HealthcheckService: healthcheckService,
-		},
-	}
+	var routerHandlers []api.RouterHandler
+	routerHandlers = append(routerHandlers, pagehandler.PageRouterHandlers(apiPath, pageService)...)
+	routerHandlers = append(routerHandlers, healthcheckhandler.HealthcheckRouterHandlers(apiPath, healthcheckService)...)
 	router := api.NewRouter(apiPath, staticPath, routerHandlers)
 	authN, authZ, err := getAuths(apiPath, datacenter)
 	if err != nil {

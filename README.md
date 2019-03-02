@@ -48,6 +48,9 @@ First, install testify, which is used for unit test mocks and assertions: `go ge
 
 To run the unit tests, you can run `go test ./...`.
 
+If you're writing new unit tests, you'll likely need to install [mockery](https://github.com/vektra/mockery)
+to mock interfaces.
+
 ### Build
 
 To build the app, `cd cmd/server` and run `go build`. This will create a `server` executable that you can run
