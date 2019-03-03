@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
-	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/handlerutils"
+	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/handlertestutils"
 	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/page/mocks"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
@@ -54,8 +54,8 @@ func TestCreatePage(t *testing.T) {
 	}{
 		{
 			name:                 "not authenticated",
-			authN:                handlerutils.DefaultAuthN("PROD"),
-			authZ:                handlerutils.DefaultAuthZ(),
+			authN:                handlertestutils.DefaultAuthN("PROD"),
+			authZ:                handlertestutils.DefaultAuthZ(),
 			expectedResponseBody: "{\"meta\":{\"httpStatus\":\"401 - Unauthorized\",\"message\":\"not authenticated\"}}\n",
 			expectedStatusCode:   401,
 		},
@@ -71,8 +71,8 @@ func TestCreatePage(t *testing.T) {
 			// 	"versionId":  []string{"1"},
 			// 	"permission": []string{"PR"},
 			// },
-			authN:                   handlerutils.DefaultAuthN("LOCAL"),
-			authZ:                   handlerutils.DefaultAuthZ(),
+			authN:                   handlertestutils.DefaultAuthN("LOCAL"),
+			authZ:                   handlertestutils.DefaultAuthZ(),
 			expectedResponseBody:    "{\"result\":{\"id\":\"PG_1\"},\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
 			expectedStatusCode:      200,
 			serviceCreatePageCalled: true,
@@ -88,8 +88,8 @@ func TestCreatePage(t *testing.T) {
 				"X-USER-ID": "UR_1",
 			},
 			requestBody:          "{\"summary\":\"test summary\",\"versionId\":1,\"permission\":\"PR\"}",
-			authN:                handlerutils.DefaultAuthN("LOCAL"),
-			authZ:                handlerutils.DefaultAuthZ(),
+			authN:                handlertestutils.DefaultAuthN("LOCAL"),
+			authZ:                handlertestutils.DefaultAuthZ(),
 			expectedResponseBody: "{\"meta\":{\"httpStatus\":\"400 - Bad Request\",\"message\":\"must provide title\"}}\n",
 			expectedStatusCode:   400,
 		},
@@ -99,7 +99,7 @@ func TestCreatePage(t *testing.T) {
 			pageService := new(mocks.PageService)
 			pageService.On("CreatePage", mock.Anything, tc.serviceCreatePageParams).Return(tc.serviceCreatePageReturnRecord, tc.serviceCreatePageReturnErr)
 			routerHandlers := PageRouterHandlers(tc.authZ.APIPath, pageService)
-			resp, respBody := handlerutils.HandleTestRequest(handlerutils.HandleTestRequestParams{
+			resp, respBody := handlertestutils.HandleTestRequest(handlertestutils.HandleTestRequestParams{
 				Method:         http.MethodPost,
 				Endpoint:       "page",
 				Params:         tc.params,
@@ -134,8 +134,8 @@ func TestUpdatePage(t *testing.T) {
 		{
 			name:                 "not authenticated",
 			pageID:               "PG_1",
-			authN:                handlerutils.DefaultAuthN("PROD"),
-			authZ:                handlerutils.DefaultAuthZ(),
+			authN:                handlertestutils.DefaultAuthN("PROD"),
+			authZ:                handlertestutils.DefaultAuthZ(),
 			expectedResponseBody: "{\"meta\":{\"httpStatus\":\"401 - Unauthorized\",\"message\":\"not authenticated\"}}\n",
 			expectedStatusCode:   401,
 		},
@@ -146,8 +146,8 @@ func TestUpdatePage(t *testing.T) {
 				"X-USER-ID": "UR_1",
 			},
 			requestBody:             "{\"title\":\"test title\",\"summary\":\"test summary\",\"versionId\":1,\"permission\":\"PR\"}",
-			authN:                   handlerutils.DefaultAuthN("LOCAL"),
-			authZ:                   handlerutils.DefaultAuthZ(),
+			authN:                   handlertestutils.DefaultAuthN("LOCAL"),
+			authZ:                   handlertestutils.DefaultAuthZ(),
 			expectedResponseBody:    "{\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
 			expectedStatusCode:      200,
 			serviceUpdatePageCalled: true,
@@ -163,8 +163,8 @@ func TestUpdatePage(t *testing.T) {
 				"X-USER-ID": "UR_1",
 			},
 			requestBody:             "{\"title\":\"test title\",\"summary\":\"test summary\",\"versionId\":1,\"permission\":\"PR\"}",
-			authN:                   handlerutils.DefaultAuthN("LOCAL"),
-			authZ:                   handlerutils.DefaultAuthZ(),
+			authN:                   handlertestutils.DefaultAuthN("LOCAL"),
+			authZ:                   handlertestutils.DefaultAuthZ(),
 			expectedResponseBody:    "{\"meta\":{\"httpStatus\":\"401 - Unauthorized\",\"message\":\"unauthorized error\"}}\n",
 			expectedStatusCode:      401,
 			serviceUpdatePageCalled: true,
@@ -184,7 +184,7 @@ func TestUpdatePage(t *testing.T) {
 			pageService := new(mocks.PageService)
 			pageService.On("UpdatePage", mock.Anything, tc.serviceUpdatePageParams).Return(tc.serviceUpdatePageReturnErr)
 			routerHandlers := PageRouterHandlers(tc.authZ.APIPath, pageService)
-			resp, respBody := handlerutils.HandleTestRequest(handlerutils.HandleTestRequestParams{
+			resp, respBody := handlertestutils.HandleTestRequest(handlertestutils.HandleTestRequestParams{
 				Method:         http.MethodPut,
 				Endpoint:       fmt.Sprintf("page/%v", tc.pageID),
 				Headers:        tc.headers,

@@ -1,4 +1,5 @@
-package handlerutils
+// basic tests for requests that don't reach a particular handler.
+package handlertestutils
 
 import (
 	"fmt"

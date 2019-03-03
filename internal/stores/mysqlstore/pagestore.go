@@ -5,9 +5,13 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Pergamene/project-spiderweb-service/internal/models/pagetemplate"
+
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/storeerror"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
+	"github.com/Pergamene/project-spiderweb-service/internal/models/permission"
+	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
 )
 
 // PageStore is the mysql for pages
@@ -36,13 +40,16 @@ func (s PageStore) CreatePage(record page.Page, ownerID string) (page.Page, erro
 	if record.PermissionType == "" {
 		return record, errors.New("must provide record.PermissionType to create the page")
 	}
-
+	if s.db == nil {
+		return record, &storeerror.DBNotSetUp{}
+	}
 	statement, err := s.db.Prepare("INSERT INTO Page (`Version_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( ?, ?, ?, ?, ?, ?, ? )")
 	if err != nil {
 		return record, err
 	}
-	record.CreatedAt = time.Now()
-	record.UpdatedAt = time.Now()
+	t := time.Now()
+	record.CreatedAt = &t
+	record.UpdatedAt = &t
 	defer statement.Close()
 	result, err := statement.Exec(record.Version.ID, record.GUID, record.Title, record.Summary, record.PermissionType, record.CreatedAt, record.UpdatedAt)
 	if err != nil {
@@ -62,6 +69,9 @@ func (s PageStore) CanModifyPage(pageGUID, userID string) (bool, error) {
 	if userID == "" {
 		return false, errors.New("must provide a userID to check privileges")
 	}
+	if s.db == nil {
+		return false, &storeerror.DBNotSetUp{}
+	}
 	rows, err := s.db.Query("SELECT `PageOwner`.`isOwner` FROM `PageOwner` JOIN `Page` ON `PageOwner`.`Page_ID` = `Page`.`ID` WHERE `Page`.`guid` = ? AND `PageOwner`.`User_ID` = ? LIMIT 1", pageGUID, userID)
 	if err != nil {
 		return false, err
@@ -73,11 +83,11 @@ func (s PageStore) CanModifyPage(pageGUID, userID string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
+		err = rows.Err()
+		if err != nil {
+			return false, err
+		}
 		return isOwner, nil
-	}
-	err = rows.Err()
-	if err != nil {
-		return false, err
 	}
 	return false, &storeerror.NotAuthorized{
 		UserID:  userID,
@@ -93,6 +103,9 @@ func (s PageStore) UpdatePage(record page.Page) error {
 	if record.Title == "" {
 		return errors.New("must provide record.Title to update the page")
 	}
+	if s.db == nil {
+		return &storeerror.DBNotSetUp{}
+	}
 	statement, err := s.db.Prepare("UPDATE `Page` SET `title` = ?, `summary` = ? WHERE `guid` = ?")
 	if err != nil {
 		return err
@@ -100,4 +113,54 @@ func (s PageStore) UpdatePage(record page.Page) error {
 	defer statement.Close()
 	_, err = statement.Exec(record.Title, record.Summary, record.GUID)
 	return err
+}
+
+// GetPage returns back the given page.
+func (s PageStore) GetPage(guid string) (page.Page, error) {
+	if s.db == nil {
+		return page.Page{}, &storeerror.DBNotSetUp{}
+	}
+	rows, err := s.db.Query("SELECT `Version_ID`, `PageTemplate_ID`, `title`, `summary`, `permission`, `createdAt`, `updatedAt` FROM `Page` WHERE `guid` = ? AND `deletedAt` IS NULL LIMIT 1", guid)
+	if err != nil {
+		return page.Page{}, err
+	}
+	defer rows.Close()
+	var versionID int64
+	var pageTemplateID int64
+	var title string
+	var summary string
+	var permissionString string
+	var createdAt *time.Time
+	var updatedAt *time.Time
+	for rows.Next() {
+		err = rows.Scan(&versionID, &pageTemplateID, &title, &summary, &permissionString, &createdAt, &updatedAt)
+		if err != nil {
+			return page.Page{}, err
+		}
+		err = rows.Err()
+		if err != nil {
+			return page.Page{}, err
+		}
+		p, err := permission.GetPermissionType(permissionString)
+		if err != nil {
+			return page.Page{}, err
+		}
+		return page.Page{
+			Version: version.Version{
+				ID: versionID,
+			},
+			PageTemplate: pagetemplate.PageTemplate{
+				ID: pageTemplateID,
+			},
+			GUID:           guid,
+			Title:          title,
+			Summary:        summary,
+			PermissionType: p,
+			CreatedAt:      createdAt,
+			UpdatedAt:      updatedAt,
+		}, nil
+	}
+	return page.Page{}, &storeerror.NotFound{
+		ID: guid,
+	}
 }

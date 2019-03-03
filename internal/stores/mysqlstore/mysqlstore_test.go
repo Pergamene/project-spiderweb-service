@@ -1,8 +1,17 @@
+// This test file sets up Main so that it:
+// 1. Only runs this packages' tests if it can establish a connection to the local database container and pull in the setup.sql file.
+// 2. It will create a new database under the root db user, and execute the setup.sql file
+// 3. Specific stores' tests should assert that mysqldb is setup and ready to pass to the store.
+// 4. Once the tests run, it will close and remove the temporarly database.
+// It is the responsibility of the individual tests to reset the tables to a testable state before
+// runnning their tests: you can only assume that the setup.sql command added the neccesary tables
+// and that the tables likely contain junk content that needs to be deleted.
+// The helper functions `clearTableForTest` and `execPreTestQueries` can be used by the tests to
+// prepare the test before execution.
 package mysqlstore
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -12,8 +21,6 @@ import (
 	"time"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/util/env"
-	"github.com/Pergamene/project-spiderweb-service/internal/util/testutils"
-	"github.com/stretchr/testify/require"
 )
 
 var mysqldb *sql.DB
@@ -132,64 +139,11 @@ func TestMain(m *testing.M) {
 	os.Exit(result)
 }
 
-func TestHealthcheckIsHealthy(t *testing.T) {
-	cases := []struct {
-		name                   string
-		shouldReplaceDBWithNil bool
-		preTestQueries         []string
-		returnIsHealthy        bool
-		returnErr              error
-	}{
-		{
-			name:            "db healthy",
-			preTestQueries:  []string{"INSERT INTO `healthcheck` (`status`) VALUES (\"ok\")"},
-			returnIsHealthy: true,
-		},
-		{
-			name:            "db not healthy",
-			preTestQueries:  []string{"INSERT INTO `healthcheck` (`status`) VALUES (\"er\")"},
-			returnIsHealthy: false,
-		},
-		{
-			name:            "db not healthy because entry doesn't exist",
-			preTestQueries:  []string{},
-			returnIsHealthy: false,
-		},
-		{
-			name:                   "db not setup",
-			shouldReplaceDBWithNil: true,
-			preTestQueries:         []string{"INSERT INTO `healthcheck` (`status`) VALUES (\"ok\")"},
-			returnIsHealthy:        false,
-			returnErr:              errors.New("DB is not configured"),
-		},
-	}
-	for _, tc := range cases {
-		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
-			healthcheckStore := HealthcheckStore{
-				db: mysqldb,
-			}
-			if tc.shouldReplaceDBWithNil {
-				healthcheckStore.db = nil
-			}
-			err := clearDBForTest(healthcheckStore.db)
-			require.NoError(t, err)
-			err = execPreTestQueries(healthcheckStore.db, tc.preTestQueries)
-			require.NoError(t, err)
-			isHealthy, err := healthcheckStore.IsHealthy()
-			errExpected := testutils.TestErrorAgainstCase(t, err, tc.returnErr)
-			if errExpected {
-				return
-			}
-			require.Equal(t, tc.returnIsHealthy, isHealthy)
-		})
-	}
-}
-
-func clearDBForTest(db *sql.DB) error {
+func clearTableForTest(db *sql.DB, table string) error {
 	if db == nil {
 		return nil
 	}
-	statement, err := db.Prepare("DELETE FROM `healthcheck`")
+	statement, err := db.Prepare(fmt.Sprintf("DELETE FROM `%v`", table))
 	if err != nil {
 		return err
 	}

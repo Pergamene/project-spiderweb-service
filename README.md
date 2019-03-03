@@ -51,12 +51,16 @@ To run the unit tests, you can run `go test ./...`.
 If you're writing new unit tests, you'll likely need to install [mockery](https://github.com/vektra/mockery)
 to mock interfaces.
 
-If you want to run the intregated tests against the db, make sure to set the env var `SETUP_SQL_FILEPATH` to
+If you want to run the intregated tests against the db, make sure to:
+
+1. Set the env var `SETUP_SQL_FILEPATH` to
 the filepath of where the db's [setup.sql](https://github.com/Pergamene/project-spiderweb-db/blob/master/setup.sql) file is on your local machine:
 
 ```
 export SETUP_SQL_FILEPATH=/Users/rhyeen/Documents/repos/project-spiderweb/project-spiderweb-db/setup.sql
 ```
+
+2. Have the database docker container running locally.  Follow the [README.md](https://github.com/Pergamene/project-spiderweb-db/blob/master/README.md) for instructions.
 
 ### Build
 

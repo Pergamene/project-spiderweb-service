@@ -1,4 +1,5 @@
-package handlerutils
+// Package handlertestutils are tools for testing handlers
+package handlertestutils
 
 import (
 	"fmt"

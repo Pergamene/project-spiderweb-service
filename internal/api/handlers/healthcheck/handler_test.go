@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
-	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/handlerutils"
+	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/handlertestutils"
 	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/healthcheck/mocks"
 	"github.com/Pergamene/project-spiderweb-service/internal/util/testutils"
 	"github.com/stretchr/testify/mock"
@@ -47,7 +47,7 @@ func TestMethodNotAllowed(t *testing.T) {
 		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
 			healthcheckService := new(mocks.HealthcheckService)
 			routerHandlers := HealthcheckRouterHandlers(tc.authZ.APIPath, healthcheckService)
-			resp, respBody := handlerutils.HandleTestRequest(handlerutils.HandleTestRequestParams{
+			resp, respBody := handlertestutils.HandleTestRequest(handlertestutils.HandleTestRequestParams{
 				Method:         tc.method,
 				Endpoint:       tc.endpoint,
 				Headers:        tc.headers,
@@ -77,8 +77,8 @@ func TestIsHealthy(t *testing.T) {
 	}{
 		{
 			name:                 "not authenticated",
-			authN:                handlerutils.DefaultAuthN("PROD"),
-			authZ:                handlerutils.DefaultAuthZ(),
+			authN:                handlertestutils.DefaultAuthN("PROD"),
+			authZ:                handlertestutils.DefaultAuthZ(),
 			expectedResponseBody: "{\"meta\":{\"httpStatus\":\"401 - Unauthorized\",\"message\":\"not authenticated\"}}\n",
 			expectedStatusCode:   401,
 		},
@@ -87,15 +87,15 @@ func TestIsHealthy(t *testing.T) {
 			headers: map[string]string{
 				"X-ADMIN-AUTH-SECRET": "BAD_SECRET",
 			},
-			authN:                handlerutils.DefaultAuthN("PROD"),
-			authZ:                handlerutils.DefaultAuthZ(),
+			authN:                handlertestutils.DefaultAuthN("PROD"),
+			authZ:                handlertestutils.DefaultAuthZ(),
 			expectedResponseBody: "{\"meta\":{\"httpStatus\":\"401 - Unauthorized\",\"message\":\"not authenticated\"}}\n",
 			expectedStatusCode:   401,
 		},
 		{
 			name:                            "happy healthy healthcheck, local",
-			authN:                           handlerutils.DefaultAuthN("LOCAL"),
-			authZ:                           handlerutils.DefaultAuthZ(),
+			authN:                           handlertestutils.DefaultAuthN("LOCAL"),
+			authZ:                           handlertestutils.DefaultAuthZ(),
 			expectedResponseBody:            "{\"result\":{\"status\":\"ok\"},\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
 			expectedStatusCode:              200,
 			serviceIsHealthyCalled:          true,
@@ -106,8 +106,8 @@ func TestIsHealthy(t *testing.T) {
 			headers: map[string]string{
 				"X-ADMIN-AUTH-SECRET": "SECRET",
 			},
-			authN:                           handlerutils.DefaultAuthN("PROD"),
-			authZ:                           handlerutils.DefaultAuthZ(),
+			authN:                           handlertestutils.DefaultAuthN("PROD"),
+			authZ:                           handlertestutils.DefaultAuthZ(),
 			expectedResponseBody:            "{\"result\":{\"status\":\"ok\"},\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
 			expectedStatusCode:              200,
 			serviceIsHealthyCalled:          true,
@@ -115,8 +115,8 @@ func TestIsHealthy(t *testing.T) {
 		},
 		{
 			name:                            "bad healthcheck, local",
-			authN:                           handlerutils.DefaultAuthN("LOCAL"),
-			authZ:                           handlerutils.DefaultAuthZ(),
+			authN:                           handlertestutils.DefaultAuthN("LOCAL"),
+			authZ:                           handlertestutils.DefaultAuthZ(),
 			expectedResponseBody:            "{\"result\":{\"status\":\"error\"},\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
 			expectedStatusCode:              200,
 			serviceIsHealthyCalled:          true,
@@ -128,7 +128,7 @@ func TestIsHealthy(t *testing.T) {
 			healthcheckService := new(mocks.HealthcheckService)
 			healthcheckService.On("IsHealthy", mock.Anything).Return(tc.serviceIsHealthyReturnIsHealthy, tc.serviceIsHealthyReturnErr)
 			routerHandlers := HealthcheckRouterHandlers(tc.authZ.APIPath, healthcheckService)
-			resp, respBody := handlerutils.HandleTestRequest(handlerutils.HandleTestRequestParams{
+			resp, respBody := handlertestutils.HandleTestRequest(handlertestutils.HandleTestRequestParams{
 				Method:         http.MethodGet,
 				Endpoint:       "healthcheck",
 				Headers:        tc.headers,

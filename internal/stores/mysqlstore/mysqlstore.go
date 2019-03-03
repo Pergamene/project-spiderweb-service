@@ -22,11 +22,12 @@ const (
 )
 
 // SetupRootMySQL returns a MySQL db with the credentials pulled from the env vars for the root user.
+// Note that root access won't be available outside of local development.
 func SetupRootMySQL(database string) (*sql.DB, error) {
 	if database == "" {
 		database = getMySQLDatabase()
 	}
-	dsnFormat := fmt.Sprintf("%v:%v@%v(%v)/%v?charset=%v",
+	dsnFormat := fmt.Sprintf("%v:%v@%v(%v)/%v?charset=%v&parseTime=true",
 		getMySQLRootUser(),
 		getMySQLRootPassword(),
 		getMySQLProtocol(),
@@ -41,7 +42,7 @@ func SetupMySQL(database string) (*sql.DB, error) {
 	if database == "" {
 		database = getMySQLDatabase()
 	}
-	dsnFormat := fmt.Sprintf("%v:%v@%v(%v)/%v?charset=%v",
+	dsnFormat := fmt.Sprintf("%v:%v@%v(%v)/%v?charset=%v&parseTime=true",
 		getMySQLUser(),
 		getMySQLPassword(),
 		getMySQLProtocol(),

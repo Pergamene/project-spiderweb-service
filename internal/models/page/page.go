@@ -3,6 +3,8 @@ package page
 import (
 	"time"
 
+	"github.com/Pergamene/project-spiderweb-service/internal/models/pagetemplate"
+
 	"github.com/Pergamene/project-spiderweb-service/internal/models/permission"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
 )
@@ -11,11 +13,12 @@ import (
 type Page struct {
 	ID             int64 `json:"-"`
 	Version        version.Version
+	PageTemplate   pagetemplate.PageTemplate
 	GUID           string `json:"id"`
 	Title          string `json:"title"`
 	Summary        string `json:"summary"`
 	PermissionType permission.Type
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
-	DeletedAt      time.Time
+	CreatedAt      *time.Time
+	UpdatedAt      *time.Time
+	DeletedAt      *time.Time
 }
