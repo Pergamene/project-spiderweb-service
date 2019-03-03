@@ -19,15 +19,6 @@ import (
 	"github.com/rs/cors"
 )
 
-const (
-	defaultMySQLHost     = "127.0.0.1:3306"
-	defaultMySQLProtocol = "tcp"
-	defaultMySQLDatabase = "spiderweb_dev"
-	defaultMySQLUser     = "spiderweb_dev"
-	defaultMySQLPassword = "password"
-	defaultMySQLCharset  = "utf8"
-)
-
 const localUIURL = "http://127.0.0.1:8781/"
 
 const (
@@ -67,7 +58,7 @@ func getDatacenter() string {
 }
 
 func main() {
-	mysqldb, err := setupMySQL()
+	mysqldb, err := mysqlstore.SetupMySQL("")
 	if err != nil {
 		fmt.Printf("Failed to connect to MySQL db.\nIf connecting locally, follow https://github.com/Pergamene/project-spiderweb-db/blob/master/README.md to get the local db running.\n")
 		log.Fatal(err)
@@ -93,51 +84,6 @@ func main() {
 	}
 	fmt.Printf("Starting server at http://localhost%v\nVerify locally by running:\ncurl -X GET http://localhost%v/%v/healthcheck\n", getHTTPServerAddr(), getHTTPServerAddr(), getAPIPath())
 	log.Fatal(s.ListenAndServe())
-}
-
-func setupMySQL() (*sql.DB, error) {
-	dsnFormat := fmt.Sprintf("%v:%v@%v(%v)/%v?charset=%v",
-		getMySQLUser(),
-		getMySQLPassword(),
-		getMySQLProtocol(),
-		getMySQLHost(),
-		getMySQLDatabase(),
-		getMySQLCharset())
-	// see: https://github.com/go-sql-driver/mysql/wiki/Examples#a-word-on-sqlopen
-	db, err := sql.Open("mysql", dsnFormat)
-	if err != nil {
-		return db, err
-	}
-	// Open doesn't open a connection. Validate DSN data:
-	err = db.Ping()
-	if err != nil {
-		return db, err
-	}
-	return db, nil
-}
-
-func getMySQLUser() string {
-	return env.Get("MYSQL_USER", defaultMySQLUser)
-}
-
-func getMySQLPassword() string {
-	return env.Get("MYSQL_PASSWORD", defaultMySQLPassword)
-}
-
-func getMySQLProtocol() string {
-	return env.Get("MYSQL_PROTOCOL", defaultMySQLProtocol)
-}
-
-func getMySQLHost() string {
-	return env.Get("MYSQL_HOST", defaultMySQLHost)
-}
-
-func getMySQLDatabase() string {
-	return env.Get("MYSQL_DATABASE", defaultMySQLDatabase)
-}
-
-func getMySQLCharset() string {
-	return env.Get("MYSQL_CHARSET", defaultMySQLCharset)
 }
 
 func setupHandler(apiPath, staticPath, datacenter string, mysqldb *sql.DB) (http.Handler, error) {

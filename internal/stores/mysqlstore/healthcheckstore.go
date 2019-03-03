@@ -18,7 +18,7 @@ func NewHealthcheckStore(mysqldb *sql.DB) HealthcheckStore {
 
 // IsHealthy checks if the db is healthy.
 func (s HealthcheckStore) IsHealthy() (bool, error) {
-	rows, err := s.db.Query("SELECT * FROM `healthcheck`")
+	rows, err := s.db.Query("SELECT `status` FROM `healthcheck`")
 	if err != nil {
 		return false, err
 	}
