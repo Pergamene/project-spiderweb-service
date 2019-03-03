@@ -17,10 +17,10 @@ import (
 )
 
 var mysqldb *sql.DB
+var mysqldbName string
 
 func getDb() (*sql.DB, string, bool, error) {
-	var db *sql.DB
-	filePath := env.Get("SETUP_SQL_FILEPATH", "")
+	filePath := env.Get("SETUP_SQL_FILEPATH", "/Users/rhyeen/Documents/repos/project-spiderweb/project-spiderweb-db/setup.sql")
 	if filePath == "" {
 		return nil, "", false, nil
 	}
@@ -31,12 +31,14 @@ func getDb() (*sql.DB, string, bool, error) {
 	fileString := string(fileBytes)
 	queries := getQueries(fileString)
 	newDB, newDBName, err := createAndOpenNewDB()
-	db = newDB
-	err = executeQueries(db, queries)
 	if err != nil {
-		return nil, newDBName, false, err
+		return nil, "", false, err
 	}
-	return db, newDBName, true, nil
+	err = executeQueries(newDB, queries)
+	if err != nil {
+		return newDB, newDBName, false, err
+	}
+	return newDB, newDBName, true, nil
 }
 
 func getQueries(fileString string) []string {
@@ -45,7 +47,7 @@ func getQueries(fileString string) []string {
 
 func createAndOpenNewDB() (*sql.DB, string, error) {
 	newDBName := getRandomDBName()
-	rootDB, err := SetupMySQL("")
+	rootDB, err := SetupRootMySQL("")
 	if err != nil {
 		return nil, newDBName, err
 	}
@@ -56,7 +58,7 @@ func createAndOpenNewDB() (*sql.DB, string, error) {
 	}
 	rootDB.Close()
 
-	db, err := SetupMySQL(newDBName)
+	db, err := SetupRootMySQL(newDBName)
 	if err != nil {
 		return nil, newDBName, err
 	}
@@ -74,7 +76,13 @@ func getRandomDBName() string {
 }
 
 func executeQueries(db *sql.DB, queries []string) error {
+	if db == nil {
+		return nil
+	}
 	for _, query := range queries {
+		if query == "" {
+			continue
+		}
 		_, err := db.Exec(query)
 		if err != nil {
 			return err
@@ -85,7 +93,7 @@ func executeQueries(db *sql.DB, queries []string) error {
 
 func closeAndRemoveDb(db *sql.DB, dbName string) error {
 	db.Close()
-	rootDB, err := SetupMySQL("")
+	rootDB, err := SetupRootMySQL("")
 	if err != nil {
 		return err
 	}
@@ -100,13 +108,18 @@ func closeAndRemoveDb(db *sql.DB, dbName string) error {
 func TestMain(m *testing.M) {
 	db, dbName, isTestible, err := getDb()
 	mysqldb = db
+	mysqldbName = dbName
+	fmt.Printf("Initialized db: %v\n", mysqldbName)
+	if err != nil {
+		if mysqldb != nil {
+			closeAndRemoveDb(mysqldb, dbName)
+		}
+		fmt.Printf("Unable to bootstrap DB:\n%v", err)
+		os.Exit(1)
+	}
 	if !isTestible {
 		fmt.Printf("Not configured to run mysqlstore tests")
 		os.Exit(0)
-	}
-	if err != nil {
-		fmt.Printf("Unable to bootstrap DB:\n%v", err)
-		os.Exit(1)
 	}
 	result := m.Run()
 	if mysqldb != nil {
@@ -134,7 +147,7 @@ func TestHealthcheckIsHealthy(t *testing.T) {
 		},
 		{
 			name:            "db not healthy",
-			preTestQueries:  []string{"INSERT INTO `healthcheck` (`status`) VALUES (\"error\")"},
+			preTestQueries:  []string{"INSERT INTO `healthcheck` (`status`) VALUES (\"er\")"},
 			returnIsHealthy: false,
 		},
 		{
@@ -147,7 +160,7 @@ func TestHealthcheckIsHealthy(t *testing.T) {
 			shouldReplaceDBWithNil: true,
 			preTestQueries:         []string{"INSERT INTO `healthcheck` (`status`) VALUES (\"ok\")"},
 			returnIsHealthy:        false,
-			returnErr:              errors.New("failure"),
+			returnErr:              errors.New("DB is not configured"),
 		},
 	}
 	for _, tc := range cases {
@@ -160,17 +173,22 @@ func TestHealthcheckIsHealthy(t *testing.T) {
 			}
 			err := clearDBForTest(healthcheckStore.db)
 			require.NoError(t, err)
+			err = execPreTestQueries(healthcheckStore.db, tc.preTestQueries)
+			require.NoError(t, err)
 			isHealthy, err := healthcheckStore.IsHealthy()
 			errExpected := testutils.TestErrorAgainstCase(t, err, tc.returnErr)
 			if errExpected {
 				return
 			}
-			require.Equal(t, isHealthy, tc.returnIsHealthy)
+			require.Equal(t, tc.returnIsHealthy, isHealthy)
 		})
 	}
 }
 
 func clearDBForTest(db *sql.DB) error {
+	if db == nil {
+		return nil
+	}
 	statement, err := db.Prepare("DELETE FROM `healthcheck`")
 	if err != nil {
 		return err
@@ -178,4 +196,8 @@ func clearDBForTest(db *sql.DB) error {
 	defer statement.Close()
 	_, err = statement.Exec()
 	return err
+}
+
+func execPreTestQueries(db *sql.DB, queries []string) error {
+	return executeQueries(db, queries)
 }

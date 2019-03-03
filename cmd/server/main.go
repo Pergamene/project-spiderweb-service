@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
-
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
 	healthcheckhandler "github.com/Pergamene/project-spiderweb-service/internal/api/handlers/healthcheck"
 	pagehandler "github.com/Pergamene/project-spiderweb-service/internal/api/handlers/page"

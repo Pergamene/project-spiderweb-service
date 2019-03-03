@@ -9,5 +9,8 @@ type DupEntry struct {
 }
 
 func (e *DupEntry) Error() string {
-	return fmt.Sprintf("Duplicate id: %v\n%v", e.ID, e.Err)
+	if e.Err != nil {
+		return fmt.Sprintf("Duplicate id: %v\n%v", e.ID, e.Err)
+	}
+	return fmt.Sprintf("Duplicate id: %v", e.ID)
 }
