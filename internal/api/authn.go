@@ -10,6 +10,12 @@ type AuthN struct {
 	AdminAuthSecret string
 }
 
+// Different header key names
+const (
+	AdminAuthSecretHeaderKey = "X-ADMIN-AUTH-SECRET"
+	UserIDHeaderKey          = "X-USER-ID"
+)
+
 // FailedAuthentication is an error that signifies that the request failed authentication.
 type FailedAuthentication struct{}
 
@@ -25,7 +31,7 @@ func (a AuthN) Authenticate(r *http.Request) (AuthData, error) {
 		if a.hasUserID(r) {
 			return AuthData{
 				Type:   AuthTypeProxyUser,
-				UserID: r.Header.Get("X-USER-ID"),
+				UserID: r.Header.Get(UserIDHeaderKey),
 			}, nil
 		}
 		return AuthData{
@@ -36,9 +42,9 @@ func (a AuthN) Authenticate(r *http.Request) (AuthData, error) {
 }
 
 func (a AuthN) isAdmin(r *http.Request) bool {
-	return r.Header.Get("X-ADMIN-AUTH-SECRET") == a.AdminAuthSecret || a.Datacenter == LocalEnv
+	return r.Header.Get(AdminAuthSecretHeaderKey) == a.AdminAuthSecret || a.Datacenter == LocalDatacenterEnv
 }
 
 func (a AuthN) hasUserID(r *http.Request) bool {
-	return r.Header.Get("X-USER-ID") != ""
+	return r.Header.Get(UserIDHeaderKey) != ""
 }

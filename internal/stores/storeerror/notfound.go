@@ -9,5 +9,8 @@ type NotFound struct {
 }
 
 func (e *NotFound) Error() string {
-	return fmt.Sprintf("Found found: %v\n%v", e.ID, e.Err)
+	if e.Err != nil {
+		return fmt.Sprintf("Could not find: %v\n%v", e.ID, e.Err)
+	}
+	return fmt.Sprintf("Could not find: %v", e.ID)
 }

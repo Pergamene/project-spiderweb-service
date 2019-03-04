@@ -7,23 +7,14 @@ import (
 	"net/http"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
-
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
-	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers"
-	"github.com/Pergamene/project-spiderweb-service/internal/services/pageservice"
+	healthcheckhandler "github.com/Pergamene/project-spiderweb-service/internal/api/handlers/healthcheck"
+	pagehandler "github.com/Pergamene/project-spiderweb-service/internal/api/handlers/page"
+	healthcheckservice "github.com/Pergamene/project-spiderweb-service/internal/services/healthcheck"
+	pageservice "github.com/Pergamene/project-spiderweb-service/internal/services/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/mysqlstore"
 	"github.com/Pergamene/project-spiderweb-service/internal/util/env"
 	"github.com/rs/cors"
-)
-
-const (
-	defaultMySQLHost     = "127.0.0.1:3306"
-	defaultMySQLProtocol = "tcp"
-	defaultMySQLDatabase = "spiderweb_dev"
-	defaultMySQLUser     = "spiderweb_dev"
-	defaultMySQLPassword = "password"
-	defaultMySQLCharset  = "utf8"
 )
 
 const localUIURL = "http://127.0.0.1:8781/"
@@ -34,11 +25,6 @@ const (
 	defaultStaticPath      = "../../static"
 	defaultDatacenter      = "LOCAL"
 )
-
-// Indexer sets up indices for the appropriate data store
-type Indexer interface {
-	EnsureIndices() error
-}
 
 func getHTTPServerAddr() string {
 	port := env.Get("PORT", defaultPort)
@@ -66,12 +52,13 @@ func getStaticPath() string {
 }
 
 func getDatacenter() string {
-	return env.Get("DATACENTER", defaultDatacenter)
+	return env.Get("DATACENTER", api.LocalDatacenterEnv)
 }
 
 func main() {
-	mysqldb, err := setupMySQL()
+	mysqldb, err := mysqlstore.SetupMySQL("")
 	if err != nil {
+		fmt.Printf("Failed to connect to MySQL db.\nIf connecting locally, follow https://github.com/Pergamene/project-spiderweb-db/blob/master/README.md to get the local db running.\n")
 		log.Fatal(err)
 	}
 	defer mysqldb.Close()
@@ -93,65 +80,23 @@ func main() {
 		WriteTimeout:   getHTTPServerWriteTimeout(),
 		MaxHeaderBytes: getHTTPServerMaxHeaderBytes(),
 	}
+	fmt.Printf("Starting server at http://localhost%v\nVerify locally by running:\ncurl -X GET http://localhost%v/%v/healthcheck\n", getHTTPServerAddr(), getHTTPServerAddr(), getAPIPath())
 	log.Fatal(s.ListenAndServe())
-}
-
-func setupMySQL() (*sql.DB, error) {
-	dsnFormat := fmt.Sprintf("%v:%v@%v(%v)/%v?charset=%v",
-		getMySQLUser(),
-		getMySQLPassword(),
-		getMySQLProtocol(),
-		getMySQLHost(),
-		getMySQLDatabase(),
-		getMySQLCharset())
-	// see: https://github.com/go-sql-driver/mysql/wiki/Examples#a-word-on-sqlopen
-	db, err := sql.Open("mysql", dsnFormat)
-	if err != nil {
-		return db, err
-	}
-	// Open doesn't open a connection. Validate DSN data:
-	err = db.Ping()
-	if err != nil {
-		return db, err
-	}
-	return db, nil
-}
-
-func getMySQLUser() string {
-	return env.Get("MYSQL_USER", defaultMySQLUser)
-}
-
-func getMySQLPassword() string {
-	return env.Get("MYSQL_PASSWORD", defaultMySQLPassword)
-}
-
-func getMySQLProtocol() string {
-	return env.Get("MYSQL_PROTOCOL", defaultMySQLProtocol)
-}
-
-func getMySQLHost() string {
-	return env.Get("MYSQL_HOST", defaultMySQLHost)
-}
-
-func getMySQLDatabase() string {
-	return env.Get("MYSQL_DATABASE", defaultMySQLDatabase)
-}
-
-func getMySQLCharset() string {
-	return env.Get("MYSQL_CHARSET", defaultMySQLCharset)
 }
 
 func setupHandler(apiPath, staticPath, datacenter string, mysqldb *sql.DB) (http.Handler, error) {
 	var handler http.Handler
 	pageStore := mysqlstore.NewPageStore(mysqldb)
+	healthcheckStore := mysqlstore.NewHealthcheckStore(mysqldb)
 	pageService := pageservice.PageService{
 		PageStore: pageStore,
 	}
-	routerHandlers := api.RouterHandlers{
-		PageHandler: handlers.PageHandler{
-			PageService: pageService,
-		},
+	healthcheckService := healthcheckservice.HealthcheckService{
+		HealthcheckStore: healthcheckStore,
 	}
+	var routerHandlers []api.RouterHandler
+	routerHandlers = append(routerHandlers, pagehandler.PageRouterHandlers(apiPath, pageService)...)
+	routerHandlers = append(routerHandlers, healthcheckhandler.HealthcheckRouterHandlers(apiPath, healthcheckService)...)
 	router := api.NewRouter(apiPath, staticPath, routerHandlers)
 	authN, authZ, err := getAuths(apiPath, datacenter)
 	if err != nil {
@@ -182,14 +127,14 @@ func getAuths(apiPath, datacenter string) (api.AuthN, api.AuthZ, error) {
 }
 
 func getAdminAuthSecret(datacenter string) (string, error) {
-	if datacenter != api.LocalEnv {
+	if datacenter != api.LocalDatacenterEnv {
 		return env.Require("ADMIN_AUTH_SECRET")
 	}
 	return env.Get("ADMIN_AUTH_SECRET", defaultAdminAuthSecret), nil
 }
 
 func setupCors(datacenter string, handler http.Handler) (http.Handler, error) {
-	if datacenter != api.LocalEnv {
+	if datacenter != api.LocalDatacenterEnv {
 		return handler, nil
 	}
 	c := cors.New(cors.Options{

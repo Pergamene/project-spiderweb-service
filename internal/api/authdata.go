@@ -38,3 +38,8 @@ func GetDataFromContext(ctx context.Context) (AuthData, error) {
 	}
 	return d, nil
 }
+
+// IsAdmin returns true if the AuthData is of admin.
+func (ad AuthData) IsAdmin() bool {
+	return ad.Type == AuthTypeAdmin
+}

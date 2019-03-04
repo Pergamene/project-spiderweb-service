@@ -8,8 +8,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// LocalEnv should be set on DATACENTER when running locally.
-const LocalEnv = "LOCAL"
+// LocalDatacenterEnv should be set on DATACENTER when running locally.
+const LocalDatacenterEnv = "LOCAL"
 
 // Handler are the details for handling the API
 type Handler struct {

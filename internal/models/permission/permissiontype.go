@@ -1,5 +1,7 @@
 package permission
 
+import "github.com/pkg/errors"
+
 // Type is a valid game type.
 type Type string
 
@@ -10,3 +12,19 @@ const (
 	TypePublicOnly Type = "PO"
 	TypeLinkOnly   Type = "LO"
 )
+
+// GetPermissionType returns the correct permission type for the given string.
+func GetPermissionType(permissionTypeString string) (Type, error) {
+	switch permissionTypeString {
+	case string(TypePrivate):
+		return TypePrivate, nil
+	case string(TypePublic):
+		return TypePublic, nil
+	case string(TypePublicOnly):
+		return TypePublicOnly, nil
+	case string(TypeLinkOnly):
+		return TypeLinkOnly, nil
+	default:
+		return TypePrivate, errors.Errorf("invalid permisson type %v", permissionTypeString)
+	}
+}
