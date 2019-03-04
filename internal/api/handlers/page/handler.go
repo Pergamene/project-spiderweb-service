@@ -82,7 +82,7 @@ func (h PageHandler) UpdatePage(w http.ResponseWriter, r *http.Request, p httpro
 		UserID: authData.UserID,
 	})
 	if _, ok := err.(*storeerror.NotAuthorized); ok {
-		api.RespondWith(r, w, http.StatusUnauthorized, &api.UnauthorizedErr{}, err)
+		api.RespondWith(r, w, http.StatusUnauthorized, &api.FailedAuthorization{}, err)
 		return
 	}
 	if err != nil {
