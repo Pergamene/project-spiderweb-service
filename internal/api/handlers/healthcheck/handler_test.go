@@ -24,7 +24,6 @@ func TestMethodNotAllowed(t *testing.T) {
 		headers              map[string]string
 		authN                api.AuthN
 		authZ                api.AuthZ
-		datacenter           string
 		expectedResponseBody string
 		expectedStatusCode   int
 	}{
@@ -68,7 +67,6 @@ func TestIsHealthy(t *testing.T) {
 		headers                         map[string]string
 		authN                           api.AuthN
 		authZ                           api.AuthZ
-		datacenter                      string
 		expectedResponseBody            string
 		expectedStatusCode              int
 		serviceIsHealthyCalled          bool

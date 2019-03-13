@@ -20,7 +20,7 @@ type PageService interface {
 	UpdatePage(ctx context.Context, params pageservice.UpdatePageParams) error
 }
 
-// PageHandler is the handler for page API
+// PageHandler is the handler for the associated API
 type PageHandler struct {
 	PageService PageService
 }
