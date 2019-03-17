@@ -32,6 +32,15 @@ func TestAPI(t *testing.T) {
 			expectedResponseBody: "{\"meta\":{\"httpStatus\":\"404 - Not Found\",\"message\":\"not found\"}}\n",
 			expectedStatusCode:   404,
 		},
+		{
+			name:                 "bad docs call",
+			method:               http.MethodGet,
+			endpoint:             "docs/doesnotexist",
+			authN:                DefaultAuthN("LOCAL"),
+			authZ:                DefaultAuthZ(),
+			expectedResponseBody: "404 page not found\n",
+			expectedStatusCode:   404,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {

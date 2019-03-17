@@ -1,33 +1,22 @@
 package healthcheckhandler
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
 )
 
-// HealthcheckHandler is the handler for page API
-type HealthcheckHandler struct {
-	HealthcheckService HealthcheckService
-}
-
-// HealthcheckService see Service for more details
-type HealthcheckService interface {
-	IsHealthy(ctx context.Context) (bool, error)
-}
-
 // HealthcheckRouterHandlers returns the requests for the associated routes.
 func HealthcheckRouterHandlers(apiPath string, healthcheckService HealthcheckService) []api.RouterHandler {
-	healthcheckHandler := HealthcheckHandler{
+	handler := HealthcheckHandler{
 		HealthcheckService: healthcheckService,
 	}
 	var routerHandlers []api.RouterHandler
 	routerHandlers = append(routerHandlers, api.RouterHandler{
 		Method:   http.MethodGet,
 		Endpoint: fmt.Sprintf("/%v/healthcheck", apiPath),
-		Handle:   healthcheckHandler.IsHealthy,
+		Handle:   handler.IsHealthy,
 	})
 	return routerHandlers
 }
