@@ -39,7 +39,7 @@ govendor fetch <same as "go get" path>
 See the [Go Getting Started page](https://golang.org/doc/install) for details on how to set up your machine for Go development.
 
 ```
-go get https://github.com/Pergamene/project-spiderweb-service
+go get github.com/Pergamene/project-spiderweb-service
 ```
 
 ### Testing
