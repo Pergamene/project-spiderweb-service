@@ -10,7 +10,6 @@ import (
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
 	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/handlertestutils"
 	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/healthcheck/mocks"
-	"github.com/Pergamene/project-spiderweb-service/internal/util/testutils"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -61,17 +60,20 @@ func TestMethodNotAllowed(t *testing.T) {
 	}
 }
 
+type isHealthyCall struct {
+	returnIsHealthy bool
+	returnErr       error
+}
+
 func TestIsHealthy(t *testing.T) {
 	cases := []struct {
-		name                            string
-		headers                         map[string]string
-		authN                           api.AuthN
-		authZ                           api.AuthZ
-		expectedResponseBody            string
-		expectedStatusCode              int
-		serviceIsHealthyCalled          bool
-		serviceIsHealthyReturnIsHealthy bool
-		serviceIsHealthyReturnErr       error
+		name                 string
+		headers              map[string]string
+		authN                api.AuthN
+		authZ                api.AuthZ
+		expectedResponseBody string
+		expectedStatusCode   int
+		isHealthyCalls       []isHealthyCall
 	}{
 		{
 			name:                 "not authenticated",
@@ -91,40 +93,39 @@ func TestIsHealthy(t *testing.T) {
 			expectedStatusCode:   401,
 		},
 		{
-			name:                            "happy healthy healthcheck, local",
-			authN:                           handlertestutils.DefaultAuthN("LOCAL"),
-			authZ:                           handlertestutils.DefaultAuthZ(),
-			expectedResponseBody:            "{\"result\":{\"status\":\"ok\"},\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
-			expectedStatusCode:              200,
-			serviceIsHealthyCalled:          true,
-			serviceIsHealthyReturnIsHealthy: true,
+			name:                 "happy healthy healthcheck, local",
+			authN:                handlertestutils.DefaultAuthN("LOCAL"),
+			authZ:                handlertestutils.DefaultAuthZ(),
+			expectedResponseBody: "{\"result\":{\"status\":\"ok\"},\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
+			expectedStatusCode:   200,
+			isHealthyCalls:       []isHealthyCall{{returnIsHealthy: true}},
 		},
 		{
 			name: "happy healthy healthcheck, prod",
 			headers: map[string]string{
 				"X-ADMIN-AUTH-SECRET": "SECRET",
 			},
-			authN:                           handlertestutils.DefaultAuthN("PROD"),
-			authZ:                           handlertestutils.DefaultAuthZ(),
-			expectedResponseBody:            "{\"result\":{\"status\":\"ok\"},\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
-			expectedStatusCode:              200,
-			serviceIsHealthyCalled:          true,
-			serviceIsHealthyReturnIsHealthy: true,
+			authN:                handlertestutils.DefaultAuthN("PROD"),
+			authZ:                handlertestutils.DefaultAuthZ(),
+			expectedResponseBody: "{\"result\":{\"status\":\"ok\"},\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
+			expectedStatusCode:   200,
+			isHealthyCalls:       []isHealthyCall{{returnIsHealthy: true}},
 		},
 		{
-			name:                            "bad healthcheck, local",
-			authN:                           handlertestutils.DefaultAuthN("LOCAL"),
-			authZ:                           handlertestutils.DefaultAuthZ(),
-			expectedResponseBody:            "{\"result\":{\"status\":\"error\"},\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
-			expectedStatusCode:              200,
-			serviceIsHealthyCalled:          true,
-			serviceIsHealthyReturnIsHealthy: false,
+			name:                 "bad healthcheck, local",
+			authN:                handlertestutils.DefaultAuthN("LOCAL"),
+			authZ:                handlertestutils.DefaultAuthZ(),
+			expectedResponseBody: "{\"result\":{\"status\":\"error\"},\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
+			expectedStatusCode:   200,
+			isHealthyCalls:       []isHealthyCall{{returnIsHealthy: false}},
 		},
 	}
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
 			healthcheckService := new(mocks.HealthcheckService)
-			healthcheckService.On("IsHealthy", mock.Anything).Return(tc.serviceIsHealthyReturnIsHealthy, tc.serviceIsHealthyReturnErr)
+			for index := range tc.isHealthyCalls {
+				healthcheckService.On("IsHealthy", mock.Anything).Return(tc.isHealthyCalls[index].returnIsHealthy, tc.isHealthyCalls[index].returnErr)
+			}
 			routerHandlers := HealthcheckRouterHandlers(tc.authZ.APIPath, healthcheckService)
 			resp, respBody := handlertestutils.HandleTestRequest(handlertestutils.HandleTestRequestParams{
 				Method:         http.MethodGet,
@@ -137,7 +138,7 @@ func TestIsHealthy(t *testing.T) {
 			})
 			require.Equal(t, tc.expectedResponseBody, respBody)
 			require.Equal(t, tc.expectedStatusCode, resp.StatusCode)
-			healthcheckService.AssertNumberOfCalls(t, "IsHealthy", testutils.GetExpectedNumberOfCalls(tc.serviceIsHealthyCalled))
+			healthcheckService.AssertNumberOfCalls(t, "IsHealthy", len(tc.isHealthyCalls))
 		})
 	}
 }

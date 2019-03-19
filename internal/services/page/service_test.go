@@ -50,51 +50,65 @@ func getStoreUnauthorizedErr(userID, tableID string, err error) error {
 	}
 }
 
+type canModifyPageCall struct {
+	paramPageGUID   string
+	paramPageUserID string
+	returnIsOwner   bool
+	returnErr       error
+}
+
+type updatePageCalls struct {
+	paramPage page.Page
+	returnErr error
+}
+
 func TestUpdatePage(t *testing.T) {
 	cases := []struct {
-		name                         string
-		params                       UpdatePageParams
-		CanModifyPageCalled          bool
-		CanModifyPageParamPageGUID   string
-		CanModifyPageParamPageUserID string
-		CanModifyPageReturnIsOwner   bool
-		CanModifyPageReturnErr       error
-		storeUpdatePageCalled        bool
-		storeUpdatePageParamPage     page.Page
-		storeUpdatePageReturnErr     error
-		returnErr                    error
+		name               string
+		params             UpdatePageParams
+		canModifyPageCalls []canModifyPageCall
+		updatePageCalls    []updatePageCalls
+		returnErr          error
 	}{
 		{
-			name:                         "test proper update",
-			params:                       getUpdatePageParams("PG_1", "UR_1"),
-			CanModifyPageCalled:          true,
-			CanModifyPageParamPageGUID:   "PG_1",
-			CanModifyPageParamPageUserID: "UR_1",
-			storeUpdatePageCalled:        true,
-			storeUpdatePageParamPage:     getDefaultUpdatePagePage("PG_1"),
+			name:   "test proper update",
+			params: getUpdatePageParams("PG_1", "UR_1"),
+			canModifyPageCalls: []canModifyPageCall{
+				{
+					paramPageGUID:   "PG_1",
+					paramPageUserID: "UR_1",
+				},
+			},
+			updatePageCalls: []updatePageCalls{{paramPage: getDefaultUpdatePagePage("PG_1")}},
 		},
 		{
-			name:                         "test unauthorized update",
-			params:                       getUpdatePageParams("PG_1", "UR_1"),
-			CanModifyPageCalled:          true,
-			CanModifyPageParamPageGUID:   "PG_1",
-			CanModifyPageParamPageUserID: "UR_1",
-			CanModifyPageReturnErr:       getStoreUnauthorizedErr("UR_1", "PG_1", nil),
-			storeUpdatePageCalled:        false,
-			returnErr:                    errors.New("User UR_1 is not authorized to perform the action on the ID PG_1"),
+			name:   "test unauthorized update",
+			params: getUpdatePageParams("PG_1", "UR_1"),
+			canModifyPageCalls: []canModifyPageCall{
+				{
+					paramPageGUID:   "PG_1",
+					paramPageUserID: "UR_1",
+					returnErr:       getStoreUnauthorizedErr("UR_1", "PG_1", nil),
+				},
+			},
+			returnErr: errors.New("User UR_1 is not authorized to perform the action on the ID PG_1"),
 		},
 	}
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
 			pageStore := new(mocks.PageStore)
-			pageStore.On("CanModifyPage", tc.CanModifyPageParamPageGUID, tc.CanModifyPageParamPageUserID).Return(tc.CanModifyPageReturnIsOwner, tc.CanModifyPageReturnErr)
-			pageStore.On("UpdatePage", tc.storeUpdatePageParamPage).Return(tc.storeUpdatePageReturnErr)
+			for index := range tc.canModifyPageCalls {
+				pageStore.On("CanModifyPage", tc.canModifyPageCalls[index].paramPageGUID, tc.canModifyPageCalls[index].paramPageUserID).Return(tc.canModifyPageCalls[index].returnIsOwner, tc.canModifyPageCalls[index].returnErr)
+			}
+			for index := range tc.updatePageCalls {
+				pageStore.On("UpdatePage", tc.updatePageCalls[index].paramPage).Return(tc.updatePageCalls[index].returnErr)
+			}
 			pageService = PageService{
 				PageStore: pageStore,
 			}
 			err := pageService.UpdatePage(ctx, tc.params)
-			pageStore.AssertNumberOfCalls(t, "CanModifyPage", testutils.GetExpectedNumberOfCalls(tc.CanModifyPageCalled))
-			pageStore.AssertNumberOfCalls(t, "UpdatePage", testutils.GetExpectedNumberOfCalls(tc.storeUpdatePageCalled))
+			pageStore.AssertNumberOfCalls(t, "CanModifyPage", len(tc.canModifyPageCalls))
+			pageStore.AssertNumberOfCalls(t, "UpdatePage", len(tc.updatePageCalls))
 			errExpected := testutils.TestErrorAgainstCase(t, err, tc.returnErr)
 			if errExpected {
 				return
