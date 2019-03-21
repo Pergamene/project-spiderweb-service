@@ -120,5 +120,6 @@ func (h PageHandler) GetPage(w http.ResponseWriter, r *http.Request, p httproute
 		api.RespondWith(r, w, http.StatusInternalServerError, &api.InternalErr{}, err)
 		return
 	}
-	api.RespondWith(r, w, http.StatusOK, record, nil)
+	conformedRecord := record.GetJSONConformed()
+	api.RespondWith(r, w, http.StatusOK, conformedRecord, nil)
 }

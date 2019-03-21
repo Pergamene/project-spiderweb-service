@@ -2,7 +2,7 @@ package permission
 
 import "github.com/pkg/errors"
 
-// Type is a valid game type.
+// Type is a valid permission type.
 type Type string
 
 // All the valid values for Type
