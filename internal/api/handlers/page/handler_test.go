@@ -12,6 +12,7 @@ import (
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/permission"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
@@ -20,8 +21,6 @@ import (
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
 	pageservice "github.com/Pergamene/project-spiderweb-service/internal/services/page"
-	"github.com/Pergamene/project-spiderweb-service/internal/util/testutils"
-	"github.com/stretchr/testify/mock"
 )
 
 func getPage(guid string, versionID int64, permissionType permission.Type) page.Page {
@@ -36,21 +35,24 @@ func getPage(guid string, versionID int64, permissionType permission.Type) page.
 	}
 }
 
+type createPageCall struct {
+	pageParams   pageservice.CreatePageParams
+	returnRecord page.Page
+	returnErr    error
+}
+
 func TestCreatePage(t *testing.T) {
 	cases := []struct {
-		name                          string
-		headers                       map[string]string
-		params                        url.Values
-		requestBody                   string
-		authN                         api.AuthN
-		authZ                         api.AuthZ
-		datacenter                    string
-		expectedResponseBody          string
-		expectedStatusCode            int
-		serviceCreatePageCalled       bool
-		serviceCreatePageParams       pageservice.CreatePageParams
-		serviceCreatePageReturnRecord page.Page
-		serviceCreatePageReturnErr    error
+		name                 string
+		headers              map[string]string
+		params               url.Values
+		requestBody          string
+		authN                api.AuthN
+		authZ                api.AuthZ
+		datacenter           string
+		expectedResponseBody string
+		expectedStatusCode   int
+		createPageCalls      []createPageCall
 	}{
 		{
 			name:                 "not authenticated",
@@ -71,16 +73,19 @@ func TestCreatePage(t *testing.T) {
 			// 	"versionId":  []string{"1"},
 			// 	"permission": []string{"PR"},
 			// },
-			authN:                   handlertestutils.DefaultAuthN("LOCAL"),
-			authZ:                   handlertestutils.DefaultAuthZ(),
-			expectedResponseBody:    "{\"result\":{\"id\":\"PG_1\"},\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
-			expectedStatusCode:      200,
-			serviceCreatePageCalled: true,
-			serviceCreatePageParams: pageservice.CreatePageParams{
-				Page:    getPage("", 1, permission.TypePrivate),
-				OwnerID: "UR_1",
+			authN:                handlertestutils.DefaultAuthN("LOCAL"),
+			authZ:                handlertestutils.DefaultAuthZ(),
+			expectedResponseBody: "{\"result\":{\"id\":\"PG_1\"},\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
+			expectedStatusCode:   200,
+			createPageCalls: []createPageCall{
+				{
+					pageParams: pageservice.CreatePageParams{
+						Page:    getPage("", 1, permission.TypePrivate),
+						OwnerID: "UR_1",
+					},
+					returnRecord: getPage("PG_1", 1, permission.TypePrivate),
+				},
 			},
-			serviceCreatePageReturnRecord: getPage("PG_1", 1, permission.TypePrivate),
 		},
 		{
 			name: "missing title for the page",
@@ -97,7 +102,9 @@ func TestCreatePage(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
 			pageService := new(mocks.PageService)
-			pageService.On("CreatePage", mock.Anything, tc.serviceCreatePageParams).Return(tc.serviceCreatePageReturnRecord, tc.serviceCreatePageReturnErr)
+			for index := range tc.createPageCalls {
+				pageService.On("CreatePage", mock.Anything, tc.createPageCalls[index].pageParams).Return(tc.createPageCalls[index].returnRecord, tc.createPageCalls[index].returnErr)
+			}
 			routerHandlers := PageRouterHandlers(tc.authZ.APIPath, pageService)
 			resp, respBody := handlertestutils.HandleTestRequest(handlertestutils.HandleTestRequestParams{
 				Method:         http.MethodPost,
@@ -111,25 +118,28 @@ func TestCreatePage(t *testing.T) {
 			})
 			require.Equal(t, tc.expectedResponseBody, respBody)
 			require.Equal(t, tc.expectedStatusCode, resp.StatusCode)
-			pageService.AssertNumberOfCalls(t, "CreatePage", testutils.GetExpectedNumberOfCalls(tc.serviceCreatePageCalled))
+			pageService.AssertNumberOfCalls(t, "CreatePage", len(tc.createPageCalls))
 		})
 	}
 }
 
+type updatePageCall struct {
+	pageParams pageservice.UpdatePageParams
+	returnErr  error
+}
+
 func TestUpdatePage(t *testing.T) {
 	cases := []struct {
-		name                       string
-		pageID                     string
-		headers                    map[string]string
-		requestBody                string
-		authN                      api.AuthN
-		authZ                      api.AuthZ
-		datacenter                 string
-		expectedResponseBody       string
-		expectedStatusCode         int
-		serviceUpdatePageCalled    bool
-		serviceUpdatePageParams    pageservice.UpdatePageParams
-		serviceUpdatePageReturnErr error
+		name                 string
+		pageID               string
+		headers              map[string]string
+		requestBody          string
+		authN                api.AuthN
+		authZ                api.AuthZ
+		datacenter           string
+		expectedResponseBody string
+		expectedStatusCode   int
+		updatePageCalls      []updatePageCall
 	}{
 		{
 			name:                 "not authenticated",
@@ -145,15 +155,18 @@ func TestUpdatePage(t *testing.T) {
 			headers: map[string]string{
 				"X-USER-ID": "UR_1",
 			},
-			requestBody:             "{\"title\":\"test title\",\"summary\":\"test summary\",\"versionId\":1,\"permission\":\"PR\"}",
-			authN:                   handlertestutils.DefaultAuthN("LOCAL"),
-			authZ:                   handlertestutils.DefaultAuthZ(),
-			expectedResponseBody:    "{\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
-			expectedStatusCode:      200,
-			serviceUpdatePageCalled: true,
-			serviceUpdatePageParams: pageservice.UpdatePageParams{
-				Page:   getPage("PG_1", 0, ""),
-				UserID: "UR_1",
+			requestBody:          "{\"title\":\"test title\",\"summary\":\"test summary\",\"versionId\":1,\"permission\":\"PR\"}",
+			authN:                handlertestutils.DefaultAuthN("LOCAL"),
+			authZ:                handlertestutils.DefaultAuthZ(),
+			expectedResponseBody: "{\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
+			expectedStatusCode:   200,
+			updatePageCalls: []updatePageCall{
+				{
+					pageParams: pageservice.UpdatePageParams{
+						Page:   getPage("PG_1", 0, ""),
+						UserID: "UR_1",
+					},
+				},
 			},
 		},
 		{
@@ -162,27 +175,32 @@ func TestUpdatePage(t *testing.T) {
 			headers: map[string]string{
 				"X-USER-ID": "UR_1",
 			},
-			requestBody:             "{\"title\":\"test title\",\"summary\":\"test summary\",\"versionId\":1,\"permission\":\"PR\"}",
-			authN:                   handlertestutils.DefaultAuthN("LOCAL"),
-			authZ:                   handlertestutils.DefaultAuthZ(),
-			expectedResponseBody:    "{\"meta\":{\"httpStatus\":\"401 - Unauthorized\",\"message\":\"unauthorized error\"}}\n",
-			expectedStatusCode:      401,
-			serviceUpdatePageCalled: true,
-			serviceUpdatePageParams: pageservice.UpdatePageParams{
-				Page:   getPage("PG_1", 0, ""),
-				UserID: "UR_1",
-			},
-			serviceUpdatePageReturnErr: &storeerror.NotAuthorized{
-				UserID:  "UR_1",
-				TableID: "PG_1",
-				Err:     errors.New("failure"),
+			requestBody:          "{\"title\":\"test title\",\"summary\":\"test summary\",\"versionId\":1,\"permission\":\"PR\"}",
+			authN:                handlertestutils.DefaultAuthN("LOCAL"),
+			authZ:                handlertestutils.DefaultAuthZ(),
+			expectedResponseBody: "{\"meta\":{\"httpStatus\":\"401 - Unauthorized\",\"message\":\"not authorized\"}}\n",
+			expectedStatusCode:   401,
+			updatePageCalls: []updatePageCall{
+				{
+					pageParams: pageservice.UpdatePageParams{
+						Page:   getPage("PG_1", 0, ""),
+						UserID: "UR_1",
+					},
+					returnErr: &storeerror.NotAuthorized{
+						UserID:  "UR_1",
+						TableID: "PG_1",
+						Err:     errors.New("failure"),
+					},
+				},
 			},
 		},
 	}
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
 			pageService := new(mocks.PageService)
-			pageService.On("UpdatePage", mock.Anything, tc.serviceUpdatePageParams).Return(tc.serviceUpdatePageReturnErr)
+			for index := range tc.updatePageCalls {
+				pageService.On("UpdatePage", mock.Anything, tc.updatePageCalls[index].pageParams).Return(tc.updatePageCalls[index].returnErr)
+			}
 			routerHandlers := PageRouterHandlers(tc.authZ.APIPath, pageService)
 			resp, respBody := handlertestutils.HandleTestRequest(handlertestutils.HandleTestRequestParams{
 				Method:         http.MethodPut,
@@ -195,7 +213,7 @@ func TestUpdatePage(t *testing.T) {
 			})
 			require.Equal(t, tc.expectedResponseBody, respBody)
 			require.Equal(t, tc.expectedStatusCode, resp.StatusCode)
-			pageService.AssertNumberOfCalls(t, "UpdatePage", testutils.GetExpectedNumberOfCalls(tc.serviceUpdatePageCalled))
+			pageService.AssertNumberOfCalls(t, "UpdatePage", len(tc.updatePageCalls))
 		})
 	}
 }

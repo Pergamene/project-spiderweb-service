@@ -34,9 +34,10 @@ func (a AuthN) Authenticate(r *http.Request) (AuthData, error) {
 				UserID: r.Header.Get(UserIDHeaderKey),
 			}, nil
 		}
-		return AuthData{
-			Type: AuthTypeAdmin,
-		}, nil
+		return AuthData{}, &FailedAuthentication{}
+		// return AuthData{
+		// 	Type: AuthTypeAdmin,
+		// }, nil
 	}
 	return AuthData{}, &FailedAuthentication{}
 }

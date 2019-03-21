@@ -50,7 +50,7 @@ func getStoreUnauthorizedErr(userID, tableID string, err error) error {
 	}
 }
 
-type canModifyPageCall struct {
+type canEditPageCall struct {
 	paramPageGUID   string
 	paramPageUserID string
 	returnIsOwner   bool
@@ -64,16 +64,16 @@ type updatePageCalls struct {
 
 func TestUpdatePage(t *testing.T) {
 	cases := []struct {
-		name               string
-		params             UpdatePageParams
-		canModifyPageCalls []canModifyPageCall
-		updatePageCalls    []updatePageCalls
-		returnErr          error
+		name             string
+		params           UpdatePageParams
+		canEditPageCalls []canEditPageCall
+		updatePageCalls  []updatePageCalls
+		returnErr        error
 	}{
 		{
 			name:   "test proper update",
 			params: getUpdatePageParams("PG_1", "UR_1"),
-			canModifyPageCalls: []canModifyPageCall{
+			canEditPageCalls: []canEditPageCall{
 				{
 					paramPageGUID:   "PG_1",
 					paramPageUserID: "UR_1",
@@ -84,7 +84,7 @@ func TestUpdatePage(t *testing.T) {
 		{
 			name:   "test unauthorized update",
 			params: getUpdatePageParams("PG_1", "UR_1"),
-			canModifyPageCalls: []canModifyPageCall{
+			canEditPageCalls: []canEditPageCall{
 				{
 					paramPageGUID:   "PG_1",
 					paramPageUserID: "UR_1",
@@ -97,8 +97,8 @@ func TestUpdatePage(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
 			pageStore := new(mocks.PageStore)
-			for index := range tc.canModifyPageCalls {
-				pageStore.On("CanModifyPage", tc.canModifyPageCalls[index].paramPageGUID, tc.canModifyPageCalls[index].paramPageUserID).Return(tc.canModifyPageCalls[index].returnIsOwner, tc.canModifyPageCalls[index].returnErr)
+			for index := range tc.canEditPageCalls {
+				pageStore.On("CanEditPage", tc.canEditPageCalls[index].paramPageGUID, tc.canEditPageCalls[index].paramPageUserID).Return(tc.canEditPageCalls[index].returnIsOwner, tc.canEditPageCalls[index].returnErr)
 			}
 			for index := range tc.updatePageCalls {
 				pageStore.On("UpdatePage", tc.updatePageCalls[index].paramPage).Return(tc.updatePageCalls[index].returnErr)
@@ -107,7 +107,7 @@ func TestUpdatePage(t *testing.T) {
 				PageStore: pageStore,
 			}
 			err := pageService.UpdatePage(ctx, tc.params)
-			pageStore.AssertNumberOfCalls(t, "CanModifyPage", len(tc.canModifyPageCalls))
+			pageStore.AssertNumberOfCalls(t, "CanEditPage", len(tc.canEditPageCalls))
 			pageStore.AssertNumberOfCalls(t, "UpdatePage", len(tc.updatePageCalls))
 			errExpected := testutils.TestErrorAgainstCase(t, err, tc.returnErr)
 			if errExpected {

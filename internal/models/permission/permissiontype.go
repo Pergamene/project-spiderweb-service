@@ -28,3 +28,8 @@ func GetPermissionType(permissionTypeString string) (Type, error) {
 		return TypePrivate, errors.Errorf("invalid permisson type %v", permissionTypeString)
 	}
 }
+
+// IsPublic returns true if the Type is a type that is readable to the public.
+func (t Type) IsPublic() bool {
+	return t != TypePrivate
+}

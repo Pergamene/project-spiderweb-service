@@ -28,5 +28,10 @@ func PageRouterHandlers(apiPath string, pageService PageService) []api.RouterHan
 		Endpoint: fmt.Sprintf("/%v/page/:%v", apiPath, PageIDRouteKey),
 		Handle:   handler.UpdatePage,
 	})
+	routerHandlers = append(routerHandlers, api.RouterHandler{
+		Method:   http.MethodGet,
+		Endpoint: fmt.Sprintf("/%v/page/:%v", apiPath, PageIDRouteKey),
+		Handle:   handler.GetPage,
+	})
 	return routerHandlers
 }
