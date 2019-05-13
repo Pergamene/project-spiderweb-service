@@ -70,3 +70,22 @@ func (request UpdatePageRequest) validate() (UpdatePageRequest, error) {
 	}
 	return request, nil
 }
+
+// GetPageRequest parameters from the GetPage call
+type GetPageRequest struct {
+	GUID string
+}
+
+// NewGetPageRequest extracts the GetPageRequest
+func NewGetPageRequest(r *http.Request, p httprouter.Params) (GetPageRequest, error) {
+	var request GetPageRequest
+	request.GUID = p.ByName(PageIDRouteKey)
+	return request.validate()
+}
+
+func (request GetPageRequest) validate() (GetPageRequest, error) {
+	if request.GUID == "" {
+		return request, errors.New("must provide a page id")
+	}
+	return request, nil
+}

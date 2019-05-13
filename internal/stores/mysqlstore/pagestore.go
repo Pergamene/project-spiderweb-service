@@ -60,9 +60,9 @@ func (s PageStore) CreatePage(record page.Page, ownerID string) (page.Page, erro
 	return record, nil
 }
 
-// CanModifyPage checks if the given user can modify the given page. If not, a storeerror.NotAuthorized will be returned.
+// CanEditPage checks if the given user can modify the given page. If not, a storeerror.NotAuthorized will be returned.
 // Will also return whether or not the user is the original owner.
-func (s PageStore) CanModifyPage(pageGUID, userID string) (bool, error) {
+func (s PageStore) CanEditPage(pageGUID, userID string) (bool, error) {
 	if pageGUID == "" {
 		return false, errors.New("must provide a pageGUID to check privileges")
 	}
@@ -72,7 +72,14 @@ func (s PageStore) CanModifyPage(pageGUID, userID string) (bool, error) {
 	if s.db == nil {
 		return false, &storeerror.DBNotSetUp{}
 	}
-	rows, err := s.db.Query("SELECT `PageOwner`.`isOwner` FROM `PageOwner` JOIN `Page` ON `PageOwner`.`Page_ID` = `Page`.`ID` WHERE `Page`.`guid` = ? AND `PageOwner`.`User_ID` = ? LIMIT 1", pageGUID, userID)
+	rows, err := s.db.Query(`
+		SELECT PageOwner.isOwner 
+		FROM PageOwner 
+		JOIN Page ON PageOwner.Page_ID = Page.ID 
+		JOIN User ON PageOwner.User_ID = User.ID
+		WHERE Page.guid = ? 
+		AND User.email = ? 
+		LIMIT 1`, pageGUID, userID)
 	if err != nil {
 		return false, err
 	}
@@ -90,6 +97,51 @@ func (s PageStore) CanModifyPage(pageGUID, userID string) (bool, error) {
 		return isOwner, nil
 	}
 	return false, &storeerror.NotAuthorized{
+		UserID:  userID,
+		TableID: pageGUID,
+	}
+}
+
+// CanReadPage checks if the given user can read the given page. If not, a storeerror.NotAuthorized will be returned.
+// Will also return whether or not the user is the original owner.
+func (s PageStore) CanReadPage(pageGUID, userID string) (bool, error) {
+	isOwner, err := s.CanEditPage(pageGUID, userID)
+	if err != nil {
+		return isOwner, err
+	}
+	if isOwner {
+		return isOwner, nil
+	}
+	if pageGUID == "" {
+		return isOwner, errors.New("must provide a pageGUID to check privileges")
+	}
+	if s.db == nil {
+		return isOwner, &storeerror.DBNotSetUp{}
+	}
+	rows, err := s.db.Query("SELECT `permission` FROM `Page` WHERE `guid` = ?", pageGUID)
+	if err != nil {
+		return isOwner, err
+	}
+	defer rows.Close()
+	var pagePermission string
+	for rows.Next() {
+		err = rows.Scan(&pagePermission)
+		if err != nil {
+			return isOwner, err
+		}
+		err = rows.Err()
+		if err != nil {
+			return isOwner, err
+		}
+		p, err := permission.GetPermissionType(pagePermission)
+		if err != nil {
+			return isOwner, err
+		}
+		if p.IsPublic() {
+			return isOwner, nil
+		}
+	}
+	return isOwner, &storeerror.NotAuthorized{
 		UserID:  userID,
 		TableID: pageGUID,
 	}

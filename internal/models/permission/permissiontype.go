@@ -2,7 +2,7 @@ package permission
 
 import "github.com/pkg/errors"
 
-// Type is a valid game type.
+// Type is a valid permission type.
 type Type string
 
 // All the valid values for Type
@@ -27,4 +27,9 @@ func GetPermissionType(permissionTypeString string) (Type, error) {
 	default:
 		return TypePrivate, errors.Errorf("invalid permisson type %v", permissionTypeString)
 	}
+}
+
+// IsPublic returns true if the Type is a type that is readable to the public.
+func (t Type) IsPublic() bool {
+	return t != TypePrivate
 }

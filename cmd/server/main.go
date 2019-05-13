@@ -17,7 +17,7 @@ import (
 	"github.com/rs/cors"
 )
 
-const localUIURL = "http://127.0.0.1:8781/"
+const localUIURL = "http://127.0.0.1:8081"
 
 const (
 	defaultAdminAuthSecret = "DEFAULT_SECRET"
@@ -140,7 +140,7 @@ func setupCors(datacenter string, handler http.Handler) (http.Handler, error) {
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{localUIURL},
 		AllowedMethods: []string{"GET", "POST", "DELETE", "PUT", "OPTIONS", "PATCH"},
-		AllowedHeaders: []string{"X-AUTH-TOKEN", "Content-Type"},
+		AllowedHeaders: []string{"X-AUTH-TOKEN", "Content-Type", "X-USER-ID"},
 	})
 	return c.Handler(handler), nil
 }

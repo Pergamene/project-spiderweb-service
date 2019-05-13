@@ -18,6 +18,7 @@ import (
 type PageService interface {
 	CreatePage(ctx context.Context, params pageservice.CreatePageParams) (page.Page, error)
 	UpdatePage(ctx context.Context, params pageservice.UpdatePageParams) error
+	GetPage(ctx context.Context, params pageservice.GetPageParams) (page.Page, error)
 }
 
 // PageHandler is the handler for the associated API
@@ -90,4 +91,35 @@ func (h PageHandler) UpdatePage(w http.ResponseWriter, r *http.Request, p httpro
 		return
 	}
 	api.RespondWith(r, w, http.StatusOK, nil, nil)
+}
+
+// GetPage see Service for more details
+func (h PageHandler) GetPage(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	request, err := NewGetPageRequest(r, p)
+	if err != nil {
+		api.RespondWith(r, w, http.StatusBadRequest, err, err)
+		return
+	}
+	ctx := r.Context()
+	authData, err := api.GetDataFromContext(ctx)
+	if err != nil {
+		api.RespondWith(r, w, http.StatusInternalServerError, &api.InternalErr{}, errors.Wrap(err, "failed to get auth data"))
+		return
+	}
+	record, err := h.PageService.GetPage(ctx, pageservice.GetPageParams{
+		Page: page.Page{
+			GUID: request.GUID,
+		},
+		UserID: authData.UserID,
+	})
+	if _, ok := err.(*storeerror.NotAuthorized); ok {
+		api.RespondWith(r, w, http.StatusUnauthorized, &api.FailedAuthorization{}, err)
+		return
+	}
+	if err != nil {
+		api.RespondWith(r, w, http.StatusInternalServerError, &api.InternalErr{}, err)
+		return
+	}
+	conformedRecord := record.GetJSONConformed()
+	api.RespondWith(r, w, http.StatusOK, conformedRecord, nil)
 }

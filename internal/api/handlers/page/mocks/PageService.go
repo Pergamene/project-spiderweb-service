@@ -34,6 +34,27 @@ func (_m *PageService) CreatePage(ctx context.Context, params pageservice.Create
 	return r0, r1
 }
 
+// GetPage provides a mock function with given fields: ctx, params
+func (_m *PageService) GetPage(ctx context.Context, params pageservice.GetPageParams) (page.Page, error) {
+	ret := _m.Called(ctx, params)
+
+	var r0 page.Page
+	if rf, ok := ret.Get(0).(func(context.Context, pageservice.GetPageParams) page.Page); ok {
+		r0 = rf(ctx, params)
+	} else {
+		r0 = ret.Get(0).(page.Page)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, pageservice.GetPageParams) error); ok {
+		r1 = rf(ctx, params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // UpdatePage provides a mock function with given fields: ctx, params
 func (_m *PageService) UpdatePage(ctx context.Context, params pageservice.UpdatePageParams) error {
 	ret := _m.Called(ctx, params)
