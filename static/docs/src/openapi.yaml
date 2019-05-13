@@ -23,3 +23,77 @@ securityDefinitions:
       * **X-USER-ID**: the user that you want to behave as.
 security:
   - 'Local Development': []
+parameters:
+  'pageIdPath':
+    name: pageId
+    in: path
+    description: |
+      ID of the associated page.
+
+      **Example**: `PG_123456789012345`
+    required: true
+    type: string
+responses:
+  'success':
+    description: Success
+    schema:
+      type: object
+      required:
+      - meta
+      properties:
+        meta:
+          $ref: '#/definitions/meta'
+definitions:
+  'meta':
+    example:
+      httpStatus: '200 - OK'
+    type: object
+    required:
+    - httpStatus
+    - requestId
+    properties:
+      httpStatus:
+        type: string
+        description: |
+          Always of the format `{X} - {Y}`,
+          where `{X}` is the associated HTTP status code,
+          and `{Y}` is a human readable explanation of the status code.
+      error:
+        type: object
+        description: Only given if an error occurred during the request.
+        required:
+        - errorMessage
+        - errorCode
+        properties:
+          errorMessage:
+            type: string
+            description: A human readable explanation of the error.
+          errorCode:
+            type: string
+            description: An identifying code associated with the error.
+      requestId:
+        type: string
+        description: A transaction id associated with the request.
+paths:
+  /pages/{pageId}:
+    get:
+      tags:
+      - page
+      summary: Get Page
+      description: Get the provided page.
+      operationId: getPage
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      responses:
+        '200':
+          description: Page Object
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'pages.yaml#/definitions/page'
+              meta:
+                $ref: '#/definitions/meta'

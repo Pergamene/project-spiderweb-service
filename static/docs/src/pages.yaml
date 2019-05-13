@@ -1,0 +1,24 @@
+swagger: '2.0'
+definitions:
+  'page':
+    example:
+      id: PG_123456789012345
+      title: Example Page
+      summary: This is an example page.
+    type: object
+    required:
+    - id
+    - title
+    properties:
+      id:
+        type: string
+        description: |
+          The page's unique GUID.
+
+          **Example**: `PG_123456789012345`
+      title:
+        type: string
+        description: User provided name for the page.  Does not need to be unique.
+      summary:
+        type: string
+        description: User provided summary of the page.  No more than 140 characters.
