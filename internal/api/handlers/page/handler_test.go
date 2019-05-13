@@ -108,7 +108,7 @@ func TestCreatePage(t *testing.T) {
 			routerHandlers := PageRouterHandlers(tc.authZ.APIPath, pageService)
 			resp, respBody := handlertestutils.HandleTestRequest(handlertestutils.HandleTestRequestParams{
 				Method:         http.MethodPost,
-				Endpoint:       "page",
+				Endpoint:       "pages",
 				Params:         tc.params,
 				Headers:        tc.headers,
 				Body:           strings.NewReader(tc.requestBody),
@@ -204,7 +204,7 @@ func TestUpdatePage(t *testing.T) {
 			routerHandlers := PageRouterHandlers(tc.authZ.APIPath, pageService)
 			resp, respBody := handlertestutils.HandleTestRequest(handlertestutils.HandleTestRequestParams{
 				Method:         http.MethodPut,
-				Endpoint:       fmt.Sprintf("page/%v", tc.pageID),
+				Endpoint:       fmt.Sprintf("pages/%v", tc.pageID),
 				Headers:        tc.headers,
 				Body:           strings.NewReader(tc.requestBody),
 				RouterHandlers: routerHandlers,
