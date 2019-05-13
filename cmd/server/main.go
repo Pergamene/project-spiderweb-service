@@ -86,8 +86,10 @@ func main() {
 
 func setupHandler(apiPath, staticPath, datacenter string, mysqldb *sql.DB) (http.Handler, error) {
 	var handler http.Handler
+	// @ISSUE: add a pageDetailStore
 	pageStore := mysqlstore.NewPageStore(mysqldb)
 	healthcheckStore := mysqlstore.NewHealthcheckStore(mysqldb)
+	// @ISSUE: add a pageDetailService connected to the pageDetailStore
 	pageService := pageservice.PageService{
 		PageStore: pageStore,
 	}
@@ -97,6 +99,7 @@ func setupHandler(apiPath, staticPath, datacenter string, mysqldb *sql.DB) (http
 	var routerHandlers []api.RouterHandler
 	routerHandlers = append(routerHandlers, pagehandler.PageRouterHandlers(apiPath, pageService)...)
 	routerHandlers = append(routerHandlers, healthcheckhandler.HealthcheckRouterHandlers(apiPath, healthcheckService)...)
+	// @ISSUE: add a pagedetailhandler.PageDetailRouterHandlers(apiPath, pageDetailService) to the routerhandlers.
 	router := api.NewRouter(apiPath, staticPath, routerHandlers)
 	authN, authZ, err := getAuths(apiPath, datacenter)
 	if err != nil {
