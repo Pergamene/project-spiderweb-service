@@ -42,6 +42,12 @@ parameters:
       **Example**: `DT_123456789012345`
     required: true
     type: string
+  'pageBody':
+    name: detailObject
+    in: body
+    required: true
+    schema:
+      $ref: 'pages.yaml#/definitions/page'
   'detailBody':
     name: detailObject
     in: body
@@ -90,6 +96,55 @@ definitions:
         type: string
         description: A transaction id associated with the request.
 paths:
+  /pages/{pageId}/full:
+    get:
+      tags:
+      - full page
+      summary: Get Entire Page
+      description: Get the provided page, including properties, details, relations, etc.
+      operationId: getEntirePage
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      responses:
+        '200':
+          description: Page Object
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'pages.yaml#/definitions/pageFull'
+              meta:
+                $ref: '#/definitions/meta'
+  /pages:
+    post:
+      tags:
+      - page
+      summary: Create Page
+      description: Creates a new page.
+      operationId: createPage
+      parameters:
+      - $ref: '#/parameters/pageBody'
+      responses:
+        '200':
+          description: Page ID
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                type: object
+                required:
+                - id
+                properties:
+                  id:
+                    $ref: 'pages.yaml#/definitions/pageId'
+              meta:
+                $ref: '#/definitions/meta'
   /pages/{pageId}:
     get:
       tags:
@@ -112,16 +167,117 @@ paths:
                 $ref: 'pages.yaml#/definitions/page'
               meta:
                 $ref: '#/definitions/meta'
+    put:
+      tags:
+      - page
+      summary: Set Page
+      description: Sets the provided page.
+      operationId: setPage
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      - $ref: '#/parameters/pageBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+    delete:
+      tags:
+      - page
+      summary: Remove Page
+      description: Removes the provided page from all queries.
+      operationId: removePage
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+  /pages/{pageId}/details:
+    get:
+      tags:
+      - detail
+      summary: Get Page Details
+      description: Get the provided page's details, in order.
+      operationId: getPageDetails
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      responses:
+        '200':
+          description: Page Details List
+          schema:
+            type: array
+            items:
+            - $ref: 'pages.yaml#/definitions/pageDetail'
+    post:
+      tags:
+      - detail
+      summary: Create Page Detail
+      description: Creates a new detail for the provided page.
+      operationId: createPageDetail
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      - $ref: '#/parameters/detailBody'
+      responses:
+        '200':
+          description: Page Detail ID
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                type: object
+                required:
+                - id
+                properties:
+                  id:
+                    $ref: 'pages.yaml#/definitions/pageDetailId'
+              meta:
+                $ref: '#/definitions/meta'
   /pages/{pageId}/details/{detailId}:
+    get:
+      tags:
+      - detail
+      summary: Get Page Detail
+      description: Sets the provided detail for the provided page.
+      operationId: getPageDetail
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      - $ref: '#/parameters/detailIdPath'
+      responses:
+        '200':
+          description: Page Detail Object
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'pages.yaml#/definitions/pageDetail'
+              meta:
+                $ref: '#/definitions/meta'
     put:
       tags:
       - detail
-      summary: Set Detail
+      summary: Set Page Detail
       description: Sets the provided detail for the provided page.
-      operationId: setDetail
+      operationId: setPageDetail
       parameters:
+      - $ref: '#/parameters/pageIdPath'
       - $ref: '#/parameters/detailIdPath'
       - $ref: '#/parameters/detailBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+    delete:
+      tags:
+      - detail
+      summary: Remove Page Detail
+      description: Removes the provided page's detail from all queries.
+      operationId: removePageDetail
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      - $ref: '#/parameters/detailIdPath'
       responses:
         '200':
           $ref: '#/responses/success'
