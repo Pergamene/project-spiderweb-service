@@ -33,6 +33,21 @@ parameters:
       **Example**: `PG_123456789012345`
     required: true
     type: string
+  'detailIdPath':
+    name: detailId
+    in: path
+    description: |
+      ID of the associated detail.
+
+      **Example**: `DT_123456789012345`
+    required: true
+    type: string
+  'detailBody':
+    name: detailObject
+    in: body
+    required: true
+    schema:
+      $ref: 'pages.yaml#/definitions/pageDetail'
 responses:
   'success':
     description: Success
@@ -97,3 +112,16 @@ paths:
                 $ref: 'pages.yaml#/definitions/page'
               meta:
                 $ref: '#/definitions/meta'
+  /pages/{pageId}/details/{detailId}:
+    put:
+      tags:
+      - detail
+      summary: Set Detail
+      description: Sets the provided detail for the provided page.
+      operationId: setDetail
+      parameters:
+      - $ref: '#/parameters/detailIdPath'
+      - $ref: '#/parameters/detailBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'

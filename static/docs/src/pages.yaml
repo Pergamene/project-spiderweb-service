@@ -5,6 +5,61 @@ definitions:
       id: PG_123456789012345
       title: Example Page
       summary: This is an example page.
+      properties:
+      - key: population
+        type: number
+        value: 100000
+      - key: crest
+        type: string
+        value: A lion holding a sword
+      details:
+      - id: DT_123456789012345
+        title: Example Detail
+        summary: This is an example detail.
+        partitions:
+        - type: h1
+          value: This is an example header.
+        - type: p
+          partitions:
+          - type: text
+            value: This is an example regular text.
+          - type: text
+            value: It can have 
+          - type: bold
+            value: bold text, 
+          - type: italics
+            value: italics text, 
+          - type: bold
+            partitions:
+            - type: italics
+              value: even italics inside of bold text.
+            - type: link
+              value: This is an example link.
+              link: https://google.com
+            - type: relation
+              value: This is an example relation.
+              relation: PG_123456789012346
+            - type: color
+              value: This is colored text, it is colored red.
+              color: #FF0000
+        - type: ul
+          items:
+          - type: text
+            value: Unordered list item 1
+          - type: text
+            value: Unordered list item 2
+        - type: ol
+          items:
+          - type: text
+            value: Ordered list item 1
+          - type: text
+            value: Ordered list item 2
+        - type: image
+          altText: alt for an image. Shown as a caption.
+          link: https://us.123rf.com/450wm/ibreaker213/ibreaker2131408/ibreaker213140800004/30989551-stock-illustration-black-horseman-castle-fantasy-black-horse-rider-with-background-castle-view-illustration-.jpg?ver=6
+        - type: hr
+        - type: quotes
+          value: This is text in a quote box.
     type: object
     required:
     - id
@@ -22,3 +77,111 @@ definitions:
       summary:
         type: string
         description: User provided summary of the page.  No more than 140 characters.
+      properties:
+        type: array
+        items:
+        - $ref: '#/definitions/pageProperty'
+      details:
+        type: array
+        items:
+        - $ref: '#/definitions/pageDetail'
+  'pageProperty':
+    type: object
+    required:
+    - key
+    - type
+    properties:
+      key:
+        type: string
+      type:
+        type: string
+        enum:
+        - number
+        - string
+        description: |
+          * If **contactImport**, then the automation will be handled as a Contact Import Automation.
+          * If **surveyDistribution**, then the automation will be handled as a Survey Distribution Automation.
+      value:
+        oneOf:
+        - type: string
+        - type: integer
+  'pageDetail':
+    type: object
+    required:
+    - id
+    - title
+    properties:
+      id:
+        type: string
+        description: |
+          The detail's unique GUID.
+
+          **Example**: `DT_123456789012345`
+      title:
+        type: string
+      summary:
+        type: string
+      partitions:
+        type: array
+        items:
+        - $ref: '#/definitions/pageDetailOuterPartition'
+  'pageDetailOuterPartition':
+    type: object
+    required:
+    - type
+    properties:
+      type:
+        type: string
+        enum:
+        - h1
+        - h2
+        - h3
+        - h4
+        - h5
+        - h6
+        - p
+        - ul
+        - ol
+        - image
+        - hr
+        - quotes
+      value:
+        type: string
+      partitions:
+        type: array
+        items:
+        - $ref: '#/definitions/pageDetailInnerPartition'
+      items:
+        type: array
+        items:
+        - $ref: '#/definitions/pageDetailInnerPartition'
+      altText:
+        type: string
+      link:
+        type: string
+  'pageDetailInnerPartition':
+    type: object
+    required:
+    - type
+    properties:
+      type:
+        type: string
+        enum:
+        - text
+        - bold
+        - italics
+        - link
+        - relation
+        - color
+      value:
+        type: string
+      partitions:
+        $ref: '#/definitions/pageDetailInnerPartition'
+      link:
+        type: string
+      relation:
+        type: string
+      color:
+        type: string
+        
+
