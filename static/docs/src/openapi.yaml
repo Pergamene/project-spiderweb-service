@@ -33,7 +33,7 @@ parameters:
       **Example**: `PG_123456789012345`
     required: true
     type: string
-  'detailIdPath':
+  'pageDetailIdPath':
     name: detailId
     in: path
     description: |
@@ -48,12 +48,30 @@ parameters:
     required: true
     schema:
       $ref: 'pages.yaml#/definitions/page'
-  'detailBody':
+  'pageDetailBody':
     name: detailObject
     in: body
     required: true
     schema:
       $ref: 'pages.yaml#/definitions/pageDetail'
+  'pagePropertiesBody':
+    name: propertiesList
+    in: body
+    required: true
+    schema:
+      $ref: 'pages.yaml#/definitions/pagePropertyList'
+  'pageDetailIdListBody':
+    name: detailIdList
+    in: body
+    required: true
+    schema:
+      $ref: 'pages.yaml#/definitions/pageDetailIdList'
+  'propertyBody':
+    name: propertyObject
+    in: body
+    required: true
+    schema:
+      $ref: 'properties.yaml#/definitions/property'
 responses:
   'success':
     description: Success
@@ -190,10 +208,49 @@ paths:
       responses:
         '200':
           $ref: '#/responses/success'
+  /pages/{pageId}/properties:
+    get:
+      tags:
+      - page properties
+      summary: Get Page Properties
+      description: Get the provided page's properties, in order.
+      operationId: getPageProperties
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      responses:
+        '200':
+          description: Page Properties List
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'pages.yaml#/definitions/pagePropertyList'
+              meta:
+                $ref: '#/definitions/meta'
+    put:
+      tags:
+      - page properties
+      summary: Replace Page Properties
+      description: |
+        Replaces all current properties with the provided properties for the provided page in the provided order.
+
+        * If the current properties are equivalent to the provided properties, the new order will be used.
+        * If there are no current properties, the provided properties will be purely additive.
+        * If there are no provided properties, all current properties will be removed.
+      operationId: replacePageProperties
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      - $ref: '#/parameters/pagePropertiesBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'
   /pages/{pageId}/details:
     get:
       tags:
-      - detail
+      - page detail
       summary: Get Page Details
       description: Get the provided page's details, in order.
       operationId: getPageDetails
@@ -203,18 +260,36 @@ paths:
         '200':
           description: Page Details List
           schema:
-            type: array
-            items:
-            - $ref: 'pages.yaml#/definitions/pageDetail'
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'pages.yaml#/definitions/pageDetailList'
+              meta:
+                $ref: '#/definitions/meta'
+    put:
+      tags:
+      - page detail
+      summary: Reorder Page Details
+      description: Reorders the provided page's details based on the provided order.
+      operationId: reorderPageDetails
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      - $ref: '#/parameters/pageDetailIdListBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'
     post:
       tags:
-      - detail
+      - page detail
       summary: Create Page Detail
       description: Creates a new detail for the provided page.
       operationId: createPageDetail
       parameters:
       - $ref: '#/parameters/pageIdPath'
-      - $ref: '#/parameters/detailBody'
+      - $ref: '#/parameters/pageDetailBody'
       responses:
         '200':
           description: Page Detail ID
@@ -236,13 +311,13 @@ paths:
   /pages/{pageId}/details/{detailId}:
     get:
       tags:
-      - detail
+      - page detail
       summary: Get Page Detail
       description: Sets the provided detail for the provided page.
       operationId: getPageDetail
       parameters:
       - $ref: '#/parameters/pageIdPath'
-      - $ref: '#/parameters/detailIdPath'
+      - $ref: '#/parameters/pageDetailIdPath'
       responses:
         '200':
           description: Page Detail Object
@@ -258,26 +333,57 @@ paths:
                 $ref: '#/definitions/meta'
     put:
       tags:
-      - detail
+      - page detail
       summary: Set Page Detail
       description: Sets the provided detail for the provided page.
       operationId: setPageDetail
       parameters:
       - $ref: '#/parameters/pageIdPath'
-      - $ref: '#/parameters/detailIdPath'
-      - $ref: '#/parameters/detailBody'
+      - $ref: '#/parameters/pageDetailIdPath'
+      - $ref: '#/parameters/pageDetailBody'
       responses:
         '200':
           $ref: '#/responses/success'
     delete:
       tags:
-      - detail
+      - page detail
       summary: Remove Page Detail
       description: Removes the provided page's detail from all queries.
       operationId: removePageDetail
       parameters:
       - $ref: '#/parameters/pageIdPath'
-      - $ref: '#/parameters/detailIdPath'
+      - $ref: '#/parameters/pageDetailIdPath'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+  /properties:
+    get:
+      tags:
+      - property
+      summary: Get Properties
+      description: Gets the list of all property definitions.
+      operationId: getProperties
+      responses:
+        '200':
+          description: Properties List
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'properties.yaml#/definitions/propertyList'
+              meta:
+                $ref: '#/definitions/meta'
+    post:
+      tags:
+      - property
+      summary: Create Property
+      description: Creates a new property.  Note that the property's key must be unique.
+      operationId: createProperty
+      parameters:
+      - $ref: '#/parameters/propertyBody'
       responses:
         '200':
           $ref: '#/responses/success'

@@ -101,30 +101,96 @@ definitions:
         description: User provided summary of the page.  No more than 140 characters.
   'pageId':
     type: string
+    example: PG_123456789012345
     description: |
       The page's unique GUID.
 
       **Example**: `PG_123456789012345`
+  'pagePropertyList':
+    example:
+    - key: population
+      type: number
+      value: 100000
+    - key: crest
+      type: string
+      value: A lion holding a sword
+    type: array
+    items:
+    - $ref: '#/definitions/pageProperty'
   'pageProperty':
+    example:
+      key: population
+      type: number
+      value: 100000
     type: object
     required:
     - key
     - type
     properties:
       key:
-        type: string
+        $ref: 'properties.yaml#/definitions/propertyKey'
       type:
-        type: string
-        enum:
-        - number
-        - string
-        description: |
-          * If **contactImport**, then the automation will be handled as a Contact Import Automation.
-          * If **surveyDistribution**, then the automation will be handled as a Survey Distribution Automation.
+        $ref: 'properties.yaml#/definitions/propertyType'
       value:
         oneOf:
         - type: string
         - type: integer
+  'pageDetailList':
+    example:
+    - id: DT_123456789012345
+      title: Example Detail
+      summary: This is an example detail.
+      partitions:
+      - type: h1
+        value: This is an example header.
+      - type: p
+        partitions:
+        - type: text
+          value: This is an example regular text.
+        - type: text
+          value: It can have 
+        - type: bold
+          value: bold text, 
+        - type: italics
+          value: italics text, 
+        - type: bold
+          partitions:
+          - type: italics
+            value: even italics inside of bold text.
+          - type: link
+            value: This is an example link.
+            link: https://google.com
+          - type: relation
+            value: This is an example relation.
+            relation: PG_123456789012346
+          - type: color
+            value: This is colored text, it is colored red.
+            color: #FF0000
+      - type: ul
+        items:
+        - type: text
+          value: Unordered list item 1
+        - type: text
+          value: Unordered list item 2
+      - type: ol
+        items:
+        - type: text
+          value: Ordered list item 1
+        - type: text
+          value: Ordered list item 2
+      - type: image
+        altText: alt for an image. Shown as a caption.
+        link: https://us.123rf.com/450wm/ibreaker213/ibreaker2131408/ibreaker213140800004/30989551-stock-illustration-black-horseman-castle-fantasy-black-horse-rider-with-background-castle-view-illustration-.jpg?ver=6
+      - type: hr
+      - type: quotes
+        value: This is text in a quote box.
+    - id: DT_123456789012346
+      title: Example Detail 2
+    - id: DT_123456789012344
+      title: Example Detail 3
+    type: array
+    items:
+    - $ref: '#/definitions/pageDetail'
   'pageDetail':
     example:
       id: DT_123456789012345
@@ -189,7 +255,16 @@ definitions:
         type: array
         items:
         - $ref: '#/definitions/pageDetailOuterPartition'
+  'pageDetailIdList':
+    example:
+    - DT_123456789012345
+    - DT_123456789012346
+    - DT_123456789012344
+    type: array
+    items:
+    - $ref: '#/definitions/pageDetailId'
   'pageDetailId':
+    example: DT_123456789012345
     type: string
     description: |
       The detail's unique GUID.
