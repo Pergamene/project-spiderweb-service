@@ -147,7 +147,7 @@ func (s PageStore) CanReadPage(pageGUID, userID string) (bool, error) {
 	}
 }
 
-// UpdatePage updatse the given page.
+// UpdatePage updates the given page.
 func (s PageStore) UpdatePage(record page.Page) error {
 	if record.GUID == "" {
 		return errors.New("must provide record.GUID to update the page")
