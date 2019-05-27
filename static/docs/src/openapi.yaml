@@ -23,3 +23,367 @@ securityDefinitions:
       * **X-USER-ID**: the user that you want to behave as.
 security:
   - 'Local Development': []
+parameters:
+  'pageIdPath':
+    name: pageId
+    in: path
+    description: |
+      ID of the associated page.
+
+      **Example**: `PG_123456789012345`
+    required: true
+    type: string
+  'pageDetailIdPath':
+    name: detailId
+    in: path
+    description: |
+      ID of the associated detail.
+
+      **Example**: `DT_123456789012345`
+    required: true
+    type: string
+  'pageBody':
+    name: detailObject
+    in: body
+    required: true
+    schema:
+      $ref: 'pages.yaml#/definitions/page'
+  'pageDetailBody':
+    name: detailObject
+    in: body
+    required: true
+    schema:
+      $ref: 'pages.yaml#/definitions/pageDetail'
+  'pagePropertiesBody':
+    name: propertiesList
+    in: body
+    required: true
+    schema:
+      $ref: 'pages.yaml#/definitions/pagePropertyList'
+  'pageDetailIdListBody':
+    name: detailIdList
+    in: body
+    required: true
+    schema:
+      $ref: 'pages.yaml#/definitions/pageDetailIdList'
+  'propertyBody':
+    name: propertyObject
+    in: body
+    required: true
+    schema:
+      $ref: 'properties.yaml#/definitions/property'
+responses:
+  'success':
+    description: Success
+    schema:
+      type: object
+      required:
+      - meta
+      properties:
+        meta:
+          $ref: '#/definitions/meta'
+definitions:
+  'meta':
+    example:
+      httpStatus: '200 - OK'
+    type: object
+    required:
+    - httpStatus
+    - requestId
+    properties:
+      httpStatus:
+        type: string
+        description: |
+          Always of the format `{X} - {Y}`,
+          where `{X}` is the associated HTTP status code,
+          and `{Y}` is a human readable explanation of the status code.
+      error:
+        type: object
+        description: Only given if an error occurred during the request.
+        required:
+        - errorMessage
+        - errorCode
+        properties:
+          errorMessage:
+            type: string
+            description: A human readable explanation of the error.
+          errorCode:
+            type: string
+            description: An identifying code associated with the error.
+      requestId:
+        type: string
+        description: A transaction id associated with the request.
+paths:
+  /pages/{pageId}/full:
+    get:
+      tags:
+      - full page
+      summary: Get Entire Page
+      description: Get the provided page, including properties, details, relations, etc.
+      operationId: getEntirePage
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      responses:
+        '200':
+          description: Page Object
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'pages.yaml#/definitions/pageFull'
+              meta:
+                $ref: '#/definitions/meta'
+  /pages:
+    post:
+      tags:
+      - page
+      summary: Create Page
+      description: Creates a new page.
+      operationId: createPage
+      parameters:
+      - $ref: '#/parameters/pageBody'
+      responses:
+        '200':
+          description: Page ID
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                type: object
+                required:
+                - id
+                properties:
+                  id:
+                    $ref: 'pages.yaml#/definitions/pageId'
+              meta:
+                $ref: '#/definitions/meta'
+  /pages/{pageId}:
+    get:
+      tags:
+      - page
+      summary: Get Page
+      description: Get the provided page.
+      operationId: getPage
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      responses:
+        '200':
+          description: Page Object
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'pages.yaml#/definitions/page'
+              meta:
+                $ref: '#/definitions/meta'
+    put:
+      tags:
+      - page
+      summary: Set Page
+      description: Sets the provided page.
+      operationId: setPage
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      - $ref: '#/parameters/pageBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+    delete:
+      tags:
+      - page
+      summary: Remove Page
+      description: Removes the provided page from all queries.
+      operationId: removePage
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+  /pages/{pageId}/properties:
+    get:
+      tags:
+      - page properties
+      summary: Get Page Properties
+      description: Get the provided page's properties, in order.
+      operationId: getPageProperties
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      responses:
+        '200':
+          description: Page Properties List
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'pages.yaml#/definitions/pagePropertyList'
+              meta:
+                $ref: '#/definitions/meta'
+    put:
+      tags:
+      - page properties
+      summary: Replace Page Properties
+      description: |
+        Replaces all current properties with the provided properties for the provided page in the provided order.
+
+        * If the current properties are equivalent to the provided properties, the new order will be used.
+        * If there are no current properties, the provided properties will be purely additive.
+        * If there are no provided properties, all current properties will be removed.
+      operationId: replacePageProperties
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      - $ref: '#/parameters/pagePropertiesBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+  /pages/{pageId}/details:
+    get:
+      tags:
+      - page detail
+      summary: Get Page Details
+      description: Get the provided page's details, in order.
+      operationId: getPageDetails
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      responses:
+        '200':
+          description: Page Details List
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'pages.yaml#/definitions/pageDetailList'
+              meta:
+                $ref: '#/definitions/meta'
+    put:
+      tags:
+      - page detail
+      summary: Reorder Page Details
+      description: Reorders the provided page's details based on the provided order.
+      operationId: reorderPageDetails
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      - $ref: '#/parameters/pageDetailIdListBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+    post:
+      tags:
+      - page detail
+      summary: Create Page Detail
+      description: Creates a new detail for the provided page.
+      operationId: createPageDetail
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      - $ref: '#/parameters/pageDetailBody'
+      responses:
+        '200':
+          description: Page Detail ID
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                type: object
+                required:
+                - id
+                properties:
+                  id:
+                    $ref: 'pages.yaml#/definitions/pageDetailId'
+              meta:
+                $ref: '#/definitions/meta'
+  /pages/{pageId}/details/{detailId}:
+    get:
+      tags:
+      - page detail
+      summary: Get Page Detail
+      description: Sets the provided detail for the provided page.
+      operationId: getPageDetail
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      - $ref: '#/parameters/pageDetailIdPath'
+      responses:
+        '200':
+          description: Page Detail Object
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'pages.yaml#/definitions/pageDetail'
+              meta:
+                $ref: '#/definitions/meta'
+    put:
+      tags:
+      - page detail
+      summary: Set Page Detail
+      description: Sets the provided detail for the provided page.
+      operationId: setPageDetail
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      - $ref: '#/parameters/pageDetailIdPath'
+      - $ref: '#/parameters/pageDetailBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+    delete:
+      tags:
+      - page detail
+      summary: Remove Page Detail
+      description: Removes the provided page's detail from all queries.
+      operationId: removePageDetail
+      parameters:
+      - $ref: '#/parameters/pageIdPath'
+      - $ref: '#/parameters/pageDetailIdPath'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+  /properties:
+    get:
+      tags:
+      - property
+      summary: Get Properties
+      description: Gets the list of all property definitions.
+      operationId: getProperties
+      responses:
+        '200':
+          description: Properties List
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'properties.yaml#/definitions/propertyList'
+              meta:
+                $ref: '#/definitions/meta'
+    post:
+      tags:
+      - property
+      summary: Create Property
+      description: Creates a new property.  Note that the property's key must be unique.
+      operationId: createProperty
+      parameters:
+      - $ref: '#/parameters/propertyBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'

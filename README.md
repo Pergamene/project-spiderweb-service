@@ -62,7 +62,7 @@ export SETUP_SQL_FILEPATH=/Users/rhyeen/Documents/repos/project-spiderweb/projec
 
 2. Have the database docker container running locally.  Follow the [README.md](https://github.com/Pergamene/project-spiderweb-db/blob/master/README.md) for instructions.
 
-### Build
+### Build/Run
 
 To build the app, `cd cmd/server` and run `go build`. This will create a `server` executable that you can run
 
@@ -71,3 +71,7 @@ To build the app, `cd cmd/server` and run `go build`. This will create a `server
 ```
 
 You'll then be able to hit the service at `http://localhost:8782` try hitting `http://localhost:8782/healthcheck` to see the basic service is working or `http://localhost:8782/dbhealthcheck` to see if it can successfully connect to the database.
+
+#### Serving API Docs locally
+
+The API docs can be accessed when the server is running locally at: `http://localhost:8782/api/docs`.

@@ -1,0 +1,32 @@
+swagger: '2.0'
+definitions:
+  'propertyList':
+    example:
+    - key: population
+      type: number
+    - key: banner
+      type: string
+    type: array
+    items:
+    - $ref: '#/definitions/property'
+  'property':
+    example:
+      key: population
+      type: number
+    type: object
+    required:
+    - key
+    - type
+    properties:
+      key:
+        $ref: '#/definitions/propertyKey'
+      type:
+        $ref: '#/definitions/propertyType'        
+  'propertyKey':
+    type: string
+    description: A unique user-defined name of the property.
+  'propertyType':
+    type: string
+    enum:
+    - number
+    - string
