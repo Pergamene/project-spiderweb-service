@@ -27,7 +27,7 @@ var mysqldb *sql.DB
 var mysqldbName string
 
 func getDb() (*sql.DB, string, bool, error) {
-	filePath := env.Get("SETUP_SQL_FILEPATH", "/Users/rhyeen/Documents/repos/project-spiderweb/project-spiderweb-db/setup.sql")
+	filePath := env.Get("SETUP_SQL_FILEPATH", "/Users/Bast/git/repos/project-spiderweb/project-spiderweb-db/setup.sql")
 	if filePath == "" {
 		return nil, "", false, nil
 	}
