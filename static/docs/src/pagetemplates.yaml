@@ -1,0 +1,38 @@
+swagger: '2.0'
+definitions:
+  'pageTemplateList':
+    example:
+    - id: PGT_12345678901
+      name: settlement
+      summary: A city, town, or anywhere that people live.
+    - id: PGT_12345678902
+      name: item
+      summary: Something of value that a character would own.
+    type: array
+    items:
+    - $ref: '#/definitions/pageTemplate'
+  'pageTemplate':
+    example:
+      id: PGT_12345678901
+      name: settlement
+      summary: A city, town, or anywhere that people live.
+    type: object
+    required:
+    - id
+    - name
+    properties:
+      id:
+        $ref: '#/definitions/pageTemplateId'
+      name:
+        type: string
+        description: User provided name for the page template.  Does not need to be unique, but it is encouraged.
+      summary:     
+        type: string 
+  'pageTemplateId':
+    type: string
+    example: PGT_12345678901
+    description: |
+      The page template's unique GUID.
+
+      **Example**: `PGT_12345678901`
+
