@@ -80,7 +80,7 @@ func main() {
 		WriteTimeout:   getHTTPServerWriteTimeout(),
 		MaxHeaderBytes: getHTTPServerMaxHeaderBytes(),
 	}
-	fmt.Printf("Starting server at http://localhost%v\nVerify locally by running:\ncurl -X GET http://localhost%v/%v/healthcheck\n", getHTTPServerAddr(), getHTTPServerAddr(), getAPIPath())
+	fmt.Printf("Starting server at http://localhost%v\nVerify locally by running:\ncurl -X GET http://localhost%v/%v/healthcheck\nAPI docs: http://localhost%v/%v/docs\n", getHTTPServerAddr(), getHTTPServerAddr(), getAPIPath(), getHTTPServerAddr(), getAPIPath())
 	log.Fatal(s.ListenAndServe())
 }
 
