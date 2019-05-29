@@ -60,7 +60,7 @@ func TestUnmarshelPartitions(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := UnmarshelPartitions(tc.paramPartitions)
+			err := UnmarshalPartitions(tc.paramPartitions)
 			testutils.TestErrorAgainstCase(t, err, tc.returnErr)
 			if err != nil {
 				return
