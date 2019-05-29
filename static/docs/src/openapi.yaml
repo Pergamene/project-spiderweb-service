@@ -30,7 +30,7 @@ parameters:
     description: |
       ID of the associated page.
 
-      **Example**: `PG_123456789012345`
+      **Example**: `PG_123456789012`
     required: true
     type: string
   'pageDetailIdPath':
@@ -39,9 +39,34 @@ parameters:
     description: |
       ID of the associated detail.
 
-      **Example**: `DT_123456789012345`
+      **Example**: `DT_123456789012`
     required: true
     type: string
+  'propertyKeyPath':
+    name: propertyKey
+    in: path
+    description: |
+      Key of the associated property.
+
+      **Example**: `population`
+    required: true
+    type: string
+  'campaignIdPath':
+    name: campaignId
+    in: path
+    description: |
+      ID of the associated campaign.
+
+      **Example**: `CP_123456789012`
+    required: true
+  'pageTemplateIdPath':
+    name: pageTemplateId
+    in: path
+    description: |
+      ID of the associated page template.
+
+      **Example**: `PGT_12345678901`
+    required: true
   'pageBody':
     name: detailObject
     in: body
@@ -72,6 +97,18 @@ parameters:
     required: true
     schema:
       $ref: 'properties.yaml#/definitions/property'
+  'campaignBody':
+    name: campaignObject
+    in: body
+    required: true
+    schema:
+      $ref: 'campaigns.yaml#/definitions/campaign'
+  'pageTemplateBody':
+    name: pageTemplateObject
+    in: body
+    required: true
+    schema:
+      $ref: 'pagetemplates.yaml#/definitions/pageTemplate'
 responses:
   'success':
     description: Success
@@ -384,6 +421,168 @@ paths:
       operationId: createProperty
       parameters:
       - $ref: '#/parameters/propertyBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+  /properties/{propertyKey}:
+    delete:
+      tags:
+      - property
+      summary: Disable Property
+      description: Disables the provided property from showing in the list of properties. This does not remove currently used instances of the property.
+      operationId: disableProperty
+      parameters:
+      - $ref: '#/parameters/propertyKeyPath'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+    post:
+      tags:
+      - property
+      summary: Enable Property
+      description: Enables the provided property to show in the list of properties.
+      operationId: enableProperty
+      parameters:
+      - $ref: '#/parameters/propertyKeyPath'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+    put:
+      tags:
+      - property
+      summary: Update Property
+      description: Updates the provided property.  If the property's key inside the body is not the same as the original key, this new key will replace the old one.  The new key must be unique.
+      operationId: updateProperty
+      parameters:
+      - $ref: '#/parameters/propertyKeyPath'
+      - $ref: '#/parameters/propertyBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+  /campaigns:
+    get:
+      tags:
+      - campaign
+      summary: Get Campaigns
+      description: Gets the list of all campaigns.
+      operationId: getCampaigns
+      responses:
+        '200':
+          description: Campaigns List
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'campaigns.yaml#/definitions/campaignList'
+              meta:
+                $ref: '#/definitions/meta'
+    post:
+      tags:
+      - campaign
+      summary: Create Campaign
+      description: |
+        Creates a new campaign.  
+        A campaign is a grouping of notes/comments attached to specific pages to demonstrate the evolution of the page as the campaign plays out.
+      operationId: createCampaign
+      parameters:
+      - $ref: '#/parameters/campaignBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+  /campaigns/{campaignId}:
+    delete:
+      tags:
+      - campaign
+      summary: Remove Campaign
+      description: Removes the provided campaign from all queries.
+      operationId: removeCampaign
+      parameters:
+      - $ref: '#/parameters/campaignIdPath'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+    put:
+      tags:
+      - campaign
+      summary: Update Campaign
+      description: Updates the provided campaign.
+      operationId: updateCampaign
+      parameters:
+      - $ref: '#/parameters/campaignIdPath'
+      - $ref: '#/parameters/campaignBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+  /pagetemplates:
+    get:
+      tags:
+      - page template
+      summary: Get Page Templates
+      description: Gets the list of all page templates.
+      operationId: getPageTemplates
+      responses:
+        '200':
+          description: Page Templates List
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                $ref: 'pagetemplates.yaml#/definitions/pageTemplateList'
+              meta:
+                $ref: '#/definitions/meta'
+    post:
+      tags:
+      - page template
+      summary: Create Page Template
+      description: |
+        Creates a new page template.
+        A template is determines what objects a page has and any defaults values, such as property keys.
+
+        For example, the page template "settlement" may have the properties, "population", "banner", and "settlement size", "established", "location on world map".
+      operationId: createPageTemplate
+      parameters:
+      - $ref: '#/parameters/pageTemplateBody'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+  /pagetemplates/{pageTemplateId}:
+    delete:
+      tags:
+      - page template
+      summary: Disable Page Template
+      description: Disables the provided page template from showing in the list of page templates. This does not remove currently used instances of the page template.
+      operationId: disablePageTemplate
+      parameters:
+      - $ref: '#/parameters/pageTemplateIdPath'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+    post:
+      tags:
+      - page template
+      summary: Enable Page Template
+      description: Enables the provided page template to show in the list of page templates.
+      operationId: enablePageTemplate
+      parameters:
+      - $ref: '#/parameters/pageTemplateIdPath'
+      responses:
+        '200':
+          $ref: '#/responses/success'
+    put:
+      tags:
+      - page template
+      summary: Update Page Template
+      description: Updates the provided page template.
+      operationId: updatePageTemplate
+      parameters:
+      - $ref: '#/parameters/pageTemplateIdPath'
+      - $ref: '#/parameters/pageTemplateBody'
       responses:
         '200':
           $ref: '#/responses/success'

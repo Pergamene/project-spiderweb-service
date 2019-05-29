@@ -2,7 +2,7 @@ swagger: '2.0'
 definitions:
   'pageFull':
     example:
-      id: PG_123456789012345
+      id: PG_123456789012
       title: Example Page
       summary: This is an example page.
       properties:
@@ -13,7 +13,7 @@ definitions:
         type: string
         value: A lion holding a sword
       details:
-      - id: DT_123456789012345
+      - id: DT_123456789012
         title: Example Detail
         summary: This is an example detail.
         partitions:
@@ -38,7 +38,7 @@ definitions:
               link: https://google.com
             - type: relation
               value: This is an example relation.
-              relation: PG_123456789012346
+              relation: PG_123456789013
             - type: color
               value: This is colored text, it is colored red.
               color: #FF0000
@@ -83,13 +83,15 @@ definitions:
         - $ref: '#/definitions/pageDetail'
   'page':
     example:
-      id: PG_123456789012345
+      id: PG_123456789012
       title: Example Page
+      pageTemplateId: PGT_12345678901
       summary: This is an example page.
     type: object
     required:
     - id
     - title
+    - pageTemplateId
     properties:
       id:
         $ref: '#/definitions/pageId'
@@ -99,13 +101,15 @@ definitions:
       summary:
         type: string
         description: User provided summary of the page.  No more than 140 characters.
+      pageTemplateId:
+        $ref: 'pagetemplates.yaml#/definitions/pageTemplateId'
   'pageId':
     type: string
-    example: PG_123456789012345
+    example: PG_123456789012
     description: |
       The page's unique GUID.
 
-      **Example**: `PG_123456789012345`
+      **Example**: `PG_123456789012`
   'pagePropertyList':
     example:
     - key: population
@@ -137,7 +141,7 @@ definitions:
         - type: integer
   'pageDetailList':
     example:
-    - id: DT_123456789012345
+    - id: DT_123456789012
       title: Example Detail
       summary: This is an example detail.
       partitions:
@@ -162,7 +166,7 @@ definitions:
             link: https://google.com
           - type: relation
             value: This is an example relation.
-            relation: PG_123456789012346
+            relation: PG_123456789013
           - type: color
             value: This is colored text, it is colored red.
             color: #FF0000
@@ -184,16 +188,16 @@ definitions:
       - type: hr
       - type: quotes
         value: This is text in a quote box.
-    - id: DT_123456789012346
+    - id: DT_123456789013
       title: Example Detail 2
-    - id: DT_123456789012344
+    - id: DT_123456789011
       title: Example Detail 3
     type: array
     items:
     - $ref: '#/definitions/pageDetail'
   'pageDetail':
     example:
-      id: DT_123456789012345
+      id: DT_123456789012
       title: Example Detail
       summary: This is an example detail.
       partitions:
@@ -218,7 +222,7 @@ definitions:
             link: https://google.com
           - type: relation
             value: This is an example relation.
-            relation: PG_123456789012346
+            relation: PG_123456789013
           - type: color
             value: This is colored text, it is colored red.
             color: #FF0000
@@ -257,19 +261,19 @@ definitions:
         - $ref: '#/definitions/pageDetailOuterPartition'
   'pageDetailIdList':
     example:
-    - DT_123456789012345
-    - DT_123456789012346
-    - DT_123456789012344
+    - DT_123456789012
+    - DT_123456789013
+    - DT_123456789011
     type: array
     items:
     - $ref: '#/definitions/pageDetailId'
   'pageDetailId':
-    example: DT_123456789012345
+    example: DT_123456789012
     type: string
     description: |
       The detail's unique GUID.
 
-      **Example**: `DT_123456789012345`
+      **Example**: `DT_123456789012`
   'pageDetailOuterPartition':
     type: object
     required:

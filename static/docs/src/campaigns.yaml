@@ -1,0 +1,38 @@
+swagger: '2.0'
+definitions:
+  'campaignList':
+    example:
+    - id: CP_123456789012
+      name: Curse of Strahd
+      summary: Work group for running the Curse of Strahd campaign.
+    - id: CP_123456789013
+      name: Home Group
+      summary: Personal group that plays in the Shardrealms universe.
+    type: array
+    items:
+    - $ref: '#/definitions/campaign'
+  'campaign':
+    example:
+      id: CP_123456789012
+      name: Curse of Strahd
+      summary: Work group for running the Curse of Strahd campaign.
+    type: object
+    required:
+    - id
+    - name
+    properties:
+      id:
+        $ref: '#/definitions/campaignId'
+      name:
+        type: string
+        description: User provided name for the campaign.  Does not need to be unique.
+      summary:     
+        type: string 
+  'campaignId':
+    type: string
+    example: CP_123456789012
+    description: |
+      The campaign's unique GUID.
+
+      **Example**: `CP_123456789012`
+
