@@ -67,6 +67,14 @@ parameters:
 
       **Example**: `PGT_12345678901`
     required: true
+  'nextBatchIdPath':
+    name: nextBatchId
+    in: path
+    description: |
+      If the request is batched, to get the next batch set this parameter based on the response.
+
+      See the response body's **result.nextBatch** property for more details.
+    required: true
   'pageBody':
     name: detailObject
     in: body
@@ -150,6 +158,25 @@ definitions:
       requestId:
         type: string
         description: A transaction id associated with the request.
+  'nextBatch':
+    example:
+      paramKey: nextBatchId
+      paramValue: PG_123456789012
+    type: object
+    required:
+    - paramKey
+    - paramValue
+    properties:
+      paramKey:
+        type: string
+        description: The query parameter name that should be used to get the next batch.
+      paramValue:
+        type: string
+        description: The query parameter value that should be used to get the next batch.
+  'listTotal':
+    example: 42
+    type: integer
+    description: The total number of items in the store.
 paths:
   /pages/{pageId}/full:
     get:
@@ -174,6 +201,37 @@ paths:
               meta:
                 $ref: '#/definitions/meta'
   /pages:
+    get:
+      tags:
+      - page
+      summary: Get Pages
+      description: Get a paginated list of the user's pages.
+      operationId: getPages
+      parameters:
+      - $ref: '#/parameters/nextBatchIdPath'
+      responses:
+        '200':
+          description: Pages List
+          schema:
+            type: object
+            required:
+            - result
+            - meta
+            properties:
+              result:
+                type: object
+                required:
+                - batch
+                - total
+                properties:
+                  batch:
+                    $ref: 'pages.yaml#/definitions/pageList'
+                  total:
+                    $ref: '#/definitions/listTotal'
+                  nextBatch:
+                    $ref: '#/definitions/nextBatch'
+              meta:
+                $ref: '#/definitions/meta'
     post:
       tags:
       - page
