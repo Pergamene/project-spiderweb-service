@@ -81,6 +81,19 @@ definitions:
         type: array
         items:
         - $ref: '#/definitions/pageDetail'
+  'pageList':
+    example:
+    - id: PG_123456789012
+      title: Example Page
+      pageTemplateId: PGT_12345678901
+      summary: This is an example page.
+    - id: PG_123456789013
+      title: Example Page 2
+      pageTemplateId: PGT_12345678901
+      summary: This is a second example page.
+    type: array
+    items:
+    - $ref: '#/definitions/page'
   'page':
     example:
       id: PG_123456789012
