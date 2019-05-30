@@ -59,6 +59,7 @@ parameters:
 
       **Example**: `CP_123456789012`
     required: true
+    type: string
   'pageTemplateIdPath':
     name: pageTemplateId
     in: path
@@ -67,6 +68,7 @@ parameters:
 
       **Example**: `PGT_12345678901`
     required: true
+    type: string
   'nextBatchIdPath':
     name: nextBatchId
     in: path
@@ -75,6 +77,7 @@ parameters:
 
       See the response body's **result.nextBatch** property for more details.
     required: true
+    type: string
   'pageBody':
     name: detailObject
     in: body
