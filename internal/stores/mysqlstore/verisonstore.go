@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
+	"github.com/Pergamene/project-spiderweb-service/internal/util/wrapsql"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/storeerror"
 )
@@ -29,8 +30,19 @@ func (s VersionStore) GetVersion(guid string) (version.Version, error) {
 	if s.db == nil {
 		return version.Version{}, &storeerror.DBNotSetUp{}
 	}
-	rows, err := s.db.Query("SELECT `ID`, `guid`, `name` FROM `Version` WHERE `guid` = ? AND `deletedAt` IS NULL LIMIT 1", guid)
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"ID", "guid", "name"},
+		FromTable: "Version",
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "guid", Operator: "= ?"},
+				{LeftSide: "deletedAt", Operator: "IS NULL"},
+			},
+		},
+		Limit: 1,
+	}
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), guid)
 	var v version.Version
-	err = getSingleRow(guid, rows, err, &v.ID, &v.GUID, &v.Name)
+	err = wrapsql.GetSingleRow(guid, rows, err, &v.ID, &v.GUID, &v.Name)
 	return v, err
 }

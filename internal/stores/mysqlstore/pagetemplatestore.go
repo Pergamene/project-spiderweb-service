@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/pagetemplate"
+	"github.com/Pergamene/project-spiderweb-service/internal/util/wrapsql"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/storeerror"
 )
@@ -29,15 +30,19 @@ func (s PageTemplateStore) GetPageTemplate(guid string) (pagetemplate.PageTempla
 	if s.db == nil {
 		return pagetemplate.PageTemplate{}, &storeerror.DBNotSetUp{}
 	}
-	clause := whereClause{
-		operator: "AND", whereOperations: []whereOperation{
-			{leftSide: "guid", operator: "= ?"},
-			{leftSide: "guid", operator: "IS NULL"},
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"ID", "guid", "name"},
+		FromTable: "PageTemplate",
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "guid", Operator: "= ?"},
+				{LeftSide: "deletedAt", Operator: "IS NULL"},
+			},
 		},
+		Limit: 1,
 	}
-	statement := newSelectStatement([]string{"ID", "guid", "name"}, "PageTemplate", clause, 1)
-	rows, err := s.db.Query(statement, guid)
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), guid)
 	var pageTemplate pagetemplate.PageTemplate
-	err = getSingleRow(guid, rows, err, &pageTemplate.ID, &pageTemplate.GUID, &pageTemplate.Name)
+	err = wrapsql.GetSingleRow(guid, rows, err, &pageTemplate.ID, &pageTemplate.GUID, &pageTemplate.Name)
 	return pageTemplate, err
 }

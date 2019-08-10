@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/storeerror"
+	"github.com/Pergamene/project-spiderweb-service/internal/util/wrapsql"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/permission"
@@ -43,28 +44,34 @@ func (s PageStore) CreatePage(record page.Page, ownerID string) (page.Page, erro
 	if s.db == nil {
 		return record, &storeerror.DBNotSetUp{}
 	}
-	statement, err := s.db.Prepare("INSERT INTO Page (`PageTemplate_ID`, `Version_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( ?, ?, ?, ?, ?, ?, ?, ? )")
-	if err != nil {
-		return record, err
-	}
 	t := time.Now()
 	record.CreatedAt = &t
 	record.UpdatedAt = &t
-	defer statement.Close()
-	result, err := statement.Exec(record.PageTemplate.ID, record.Version.ID, record.GUID, record.Title, record.Summary, record.PermissionType, record.CreatedAt, record.UpdatedAt)
+	id, err := wrapsql.ExecSingleInsert(s.db, wrapsql.InsertQuery{
+		IntoTable: "Page",
+		InjectedValues: wrapsql.InsertInjectedValues{
+			"PageTemplate_ID": record.PageTemplate.ID,
+			"Version_ID":      record.Version.ID,
+			"guid":            record.GUID,
+			"title":           record.Title,
+			"summary":         record.Summary,
+			"permission":      record.PermissionType,
+			"createdAt":       record.CreatedAt,
+			"updatedAt":       record.UpdatedAt,
+		},
+	})
 	if err != nil {
 		return record, err
 	}
-	id, err := result.LastInsertId()
 	record.ID = id
 	return record, nil
 }
 
 // CanEditPage checks if the given user can modify the given page. If not, a storeerror.NotAuthorized will be returned.
 // Will also return whether or not the user is the original owner.
-func (s PageStore) CanEditPage(pageGUID, userID string) (bool, error) {
-	if pageGUID == "" {
-		return false, errors.New("must provide a pageGUID to check privileges")
+func (s PageStore) CanEditPage(guid, userID string) (bool, error) {
+	if guid == "" {
+		return false, errors.New("must provide a guid to check privileges")
 	}
 	if userID == "" {
 		return false, errors.New("must provide a userID to check privileges")
@@ -72,79 +79,73 @@ func (s PageStore) CanEditPage(pageGUID, userID string) (bool, error) {
 	if s.db == nil {
 		return false, &storeerror.DBNotSetUp{}
 	}
-	rows, err := s.db.Query(`
-		SELECT PageOwner.isOwner 
-		FROM PageOwner 
-		JOIN Page ON PageOwner.Page_ID = Page.ID 
-		JOIN User ON PageOwner.User_ID = User.ID
-		WHERE Page.guid = ? 
-		AND User.email = ? 
-		LIMIT 1`, pageGUID, userID)
-	if err != nil {
-		return false, err
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"PageOwner.isOwner"},
+		FromTable: "PageOwner",
+		JoinClauses: []wrapsql.JoinClause{
+			{JoinTable: "Page", On: wrapsql.OnClause{LeftSide: "PageOwner.Page_ID", RightSide: "Page.ID"}},
+			{JoinTable: "User", On: wrapsql.OnClause{LeftSide: "PageOwner.User_ID", RightSide: "User.ID"}},
+		},
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "Page.guid", Operator: "= ?"},
+				{LeftSide: "User.email", Operator: "= ?"},
+			},
+		},
+		Limit: 1,
 	}
-	defer rows.Close()
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), guid, userID)
 	var isOwner bool
-	for rows.Next() {
-		err = rows.Scan(&isOwner)
-		if err != nil {
-			return false, err
+	err = wrapsql.GetSingleRow(guid, rows, err, &isOwner)
+	if _, ok := err.(*storeerror.NotFound); ok {
+		return false, &storeerror.NotAuthorized{
+			UserID:  userID,
+			TableID: guid,
 		}
-		err = rows.Err()
-		if err != nil {
-			return false, err
-		}
-		return isOwner, nil
 	}
-	return false, &storeerror.NotAuthorized{
-		UserID:  userID,
-		TableID: pageGUID,
-	}
+	return isOwner, err
 }
 
 // CanReadPage checks if the given user can read the given page. If not, a storeerror.NotAuthorized will be returned.
 // Will also return whether or not the user is the original owner.
-func (s PageStore) CanReadPage(pageGUID, userID string) (bool, error) {
-	isOwner, err := s.CanEditPage(pageGUID, userID)
+func (s PageStore) CanReadPage(guid, userID string) (bool, error) {
+	isOwner, err := s.CanEditPage(guid, userID)
 	if err != nil {
 		return isOwner, err
 	}
 	if isOwner {
 		return isOwner, nil
 	}
-	if pageGUID == "" {
-		return isOwner, errors.New("must provide a pageGUID to check privileges")
+	if guid == "" {
+		return isOwner, errors.New("must provide a guid to check privileges")
 	}
 	if s.db == nil {
 		return isOwner, &storeerror.DBNotSetUp{}
 	}
-	rows, err := s.db.Query("SELECT `permission` FROM `Page` WHERE `guid` = ?", pageGUID)
-	if err != nil {
-		return isOwner, err
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"permission"},
+		FromTable: "Page",
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "guid", Operator: "= ?"},
+			},
+		},
+		Limit: 1,
 	}
-	defer rows.Close()
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), guid)
 	var pagePermission string
-	for rows.Next() {
-		err = rows.Scan(&pagePermission)
-		if err != nil {
-			return isOwner, err
-		}
-		err = rows.Err()
-		if err != nil {
-			return isOwner, err
-		}
-		p, err := permission.GetPermissionType(pagePermission)
-		if err != nil {
-			return isOwner, err
-		}
-		if p.IsPublic() {
-			return isOwner, nil
+	err = wrapsql.GetSingleRow(guid, rows, err, &pagePermission)
+	if _, ok := err.(*storeerror.NotFound); ok {
+		return false, &storeerror.NotAuthorized{
+			UserID:  userID,
+			TableID: guid,
 		}
 	}
-	return isOwner, &storeerror.NotAuthorized{
-		UserID:  userID,
-		TableID: pageGUID,
+	p, err := permission.GetPermissionType(pagePermission)
+	if err != nil {
+		return false, err
 	}
+	return p.IsPublic(), nil
 }
 
 // SetPage sets the given page.
