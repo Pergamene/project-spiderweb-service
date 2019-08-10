@@ -4,4 +4,5 @@ package pagetemplate
 type PageTemplate struct {
 	ID   int64  `json:"-"`
 	Name string `json:"name"`
+	GUID string `json:"guid"`
 }

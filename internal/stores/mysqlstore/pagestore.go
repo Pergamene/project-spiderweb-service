@@ -5,13 +5,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Pergamene/project-spiderweb-service/internal/models/pagetemplate"
-
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/storeerror"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/permission"
-	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
 )
 
 // PageStore is the mysql for pages
@@ -35,15 +32,18 @@ func (s PageStore) CreatePage(record page.Page, ownerID string) (page.Page, erro
 		return record, errors.New("must provide record.Title to create the page")
 	}
 	if record.Version.ID == 0 {
-		return record, errors.New("must provide record.Version to create the page")
+		return record, errors.New("must provide record.Version.ID to create the page")
 	}
 	if record.PermissionType == "" {
 		return record, errors.New("must provide record.PermissionType to create the page")
 	}
+	if record.PageTemplate.ID == 0 {
+		return record, errors.New("must provide record.PageTemplate.ID to create the page")
+	}
 	if s.db == nil {
 		return record, &storeerror.DBNotSetUp{}
 	}
-	statement, err := s.db.Prepare("INSERT INTO Page (`Version_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( ?, ?, ?, ?, ?, ?, ? )")
+	statement, err := s.db.Prepare("INSERT INTO Page (`PageTemplate_ID`, `Version_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( ?, ?, ?, ?, ?, ?, ?, ? )")
 	if err != nil {
 		return record, err
 	}
@@ -51,7 +51,7 @@ func (s PageStore) CreatePage(record page.Page, ownerID string) (page.Page, erro
 	record.CreatedAt = &t
 	record.UpdatedAt = &t
 	defer statement.Close()
-	result, err := statement.Exec(record.Version.ID, record.GUID, record.Title, record.Summary, record.PermissionType, record.CreatedAt, record.UpdatedAt)
+	result, err := statement.Exec(record.PageTemplate.ID, record.Version.ID, record.GUID, record.Title, record.Summary, record.PermissionType, record.CreatedAt, record.UpdatedAt)
 	if err != nil {
 		return record, err
 	}
@@ -147,72 +147,95 @@ func (s PageStore) CanReadPage(pageGUID, userID string) (bool, error) {
 	}
 }
 
-// UpdatePage updatse the given page.
-func (s PageStore) UpdatePage(record page.Page) error {
+// SetPage sets the given page.
+func (s PageStore) SetPage(record page.Page) error {
 	if record.GUID == "" {
 		return errors.New("must provide record.GUID to update the page")
 	}
 	if record.Title == "" {
 		return errors.New("must provide record.Title to update the page")
 	}
-	if s.db == nil {
-		return &storeerror.DBNotSetUp{}
-	}
-	statement, err := s.db.Prepare("UPDATE `Page` SET `title` = ?, `summary` = ? WHERE `guid` = ?")
-	if err != nil {
-		return err
-	}
-	defer statement.Close()
-	_, err = statement.Exec(record.Title, record.Summary, record.GUID)
-	return err
+	return errors.New("@TODO: still need to update all the other stuff that CreatePage has")
+	// if s.db == nil {
+	// 	return &storeerror.DBNotSetUp{}
+	// }
+	// statement, err := s.db.Prepare("UPDATE `Page` SET `title` = ?, `summary` = ? WHERE `guid` = ?")
+	// if err != nil {
+	// 	return err
+	// }
+	// defer statement.Close()
+	// _, err = statement.Exec(record.Title, record.Summary, record.GUID)
+	// return err
 }
 
 // GetPage returns back the given page.
 func (s PageStore) GetPage(guid string) (page.Page, error) {
-	if s.db == nil {
-		return page.Page{}, &storeerror.DBNotSetUp{}
-	}
-	rows, err := s.db.Query("SELECT `Version_ID`, `PageTemplate_ID`, `title`, `summary`, `permission`, `createdAt`, `updatedAt` FROM `Page` WHERE `guid` = ? AND `deletedAt` IS NULL LIMIT 1", guid)
-	if err != nil {
-		return page.Page{}, err
-	}
-	defer rows.Close()
-	var versionID int64
-	var pageTemplateID int64
-	var title string
-	var summary string
-	var permissionString string
-	var createdAt *time.Time
-	var updatedAt *time.Time
-	for rows.Next() {
-		err = rows.Scan(&versionID, &pageTemplateID, &title, &summary, &permissionString, &createdAt, &updatedAt)
-		if err != nil {
-			return page.Page{}, err
-		}
-		err = rows.Err()
-		if err != nil {
-			return page.Page{}, err
-		}
-		p, err := permission.GetPermissionType(permissionString)
-		if err != nil {
-			return page.Page{}, err
-		}
-		return page.Page{
-			Version: version.Version{
-				ID: versionID,
-			},
-			PageTemplate: pagetemplate.PageTemplate{
-				ID: pageTemplateID,
-			},
-			GUID:           guid,
-			Title:          title,
-			Summary:        summary,
-			PermissionType: p,
-			CreatedAt:      createdAt,
-			UpdatedAt:      updatedAt,
-		}, nil
-	}
-	return page.Page{}, &storeerror.NotFound{
-		ID: guid,
-	}
+	return page.Page{}, errors.New("@TODO: still need to make a different between GetPage and GetEntirePage")
+	// if s.db == nil {
+	// 	return page.Page{}, &storeerror.DBNotSetUp{}
+	// }
+	// rows, err := s.db.Query("SELECT `Version_ID`, `PageTemplate_ID`, `title`, `summary`, `permission`, `createdAt`, `updatedAt` FROM `Page` WHERE `guid` = ? AND `deletedAt` IS NULL LIMIT 1", guid)
+	// if err != nil {
+	// 	return page.Page{}, err
+	// }
+	// defer rows.Close()
+	// var versionID int64
+	// var pageTemplateID int64
+	// var title string
+	// var summary string
+	// var permissionString string
+	// var createdAt *time.Time
+	// var updatedAt *time.Time
+	// for rows.Next() {
+	// 	err = rows.Scan(&versionID, &pageTemplateID, &title, &summary, &permissionString, &createdAt, &updatedAt)
+	// 	if err != nil {
+	// 		return page.Page{}, err
+	// 	}
+	// 	err = rows.Err()
+	// 	if err != nil {
+	// 		return page.Page{}, err
+	// 	}
+	// 	p, err := permission.GetPermissionType(permissionString)
+	// 	if err != nil {
+	// 		return page.Page{}, err
+	// 	}
+	// 	return page.Page{
+	// 		Version: version.Version{
+	// 			ID: versionID,
+	// 		},
+	// 		PageTemplate: pagetemplate.PageTemplate{
+	// 			ID: pageTemplateID,
+	// 		},
+	// 		GUID:           guid,
+	// 		Title:          title,
+	// 		Summary:        summary,
+	// 		PermissionType: p,
+	// 		CreatedAt:      createdAt,
+	// 		UpdatedAt:      updatedAt,
+	// 	}, nil
+	// }
+	// return page.Page{}, &storeerror.NotFound{
+	// 	ID: guid,
+	// }
+}
+
+// GetEntirePage returns back the given page populated with details, properties, etc.
+func (s PageStore) GetEntirePage(guid string) (page.Page, error) {
+	return page.Page{}, errors.New("@TODO: GetEntirePage")
+}
+
+// GetPages returns a list of pages based on the nextBatchId
+func (s PageStore) GetPages(userID string, nextBatchID string) ([]page.Page, int, string, error) {
+	return nil, 0, "", errors.New("@TODO: GetPages")
+}
+
+// RemovePage marks the given page and removed by setting the deletedAt property.
+func (s PageStore) RemovePage(guid string) error {
+	return errors.New("@TODO: RemovePage")
+}
+
+// GetUniquePageGUID returns a guid for the page that is guaranteed to be unique or errors.
+// If the proposedPageGuid is not a zero-value and not unique, it will error.
+func (s PageStore) GetUniquePageGUID(proposedPageGUID string) (string, error) {
+	return proposedPageGUID, errors.New("@TODO: GetUniquePageGUID")
 }

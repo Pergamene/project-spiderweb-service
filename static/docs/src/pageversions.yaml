@@ -1,0 +1,39 @@
+swagger: '2.0'
+definitions:
+  'pageVersionList':
+    example:
+    - id: VR_123456789012
+      name: New Campaign Changes
+      parentId: VR_123456789011
+    - id: VR_123456789011
+      name: Default
+      parentId: null
+    type: array
+    items:
+    - $ref: '#/definitions/pageVersion'
+  'pageVersion':
+    example:
+      id: VR_123456789012
+      name: Default
+      parentId: VR_123456789011
+    type: object
+    required:
+    - id
+    - name
+    properties:
+      id:
+        $ref: '#/definitions/pageVersionId'
+      name:
+        type: string
+        description: User provided name for the page version.  Does not need to be unique, but it is encouraged.
+      parentId:
+        type: string
+        description: The original version id if a page has more than one version.
+  'pageVersionId':
+    type: string
+    example: VR_123456789012
+    description: |
+      The page version's unique GUID.
+
+      **Example**: `VR_123456789012`
+

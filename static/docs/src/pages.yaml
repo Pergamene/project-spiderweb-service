@@ -5,6 +5,13 @@ definitions:
       id: PG_123456789012
       title: Example Page
       summary: This is an example page.
+      version:
+        name: Default
+        id: VR_123456789012
+      pageTemplate:
+        name: Place
+        id: PGT_12345678901
+      permissionType: PR
       properties:
       - key: population
         type: number
@@ -64,6 +71,9 @@ definitions:
     required:
     - id
     - title
+    - version
+    - pageTemplate
+    - permissionType
     properties:
       id:
         $ref: '#/definitions/pageId'
@@ -73,6 +83,12 @@ definitions:
       summary:
         type: string
         description: User provided summary of the page.  No more than 140 characters.
+      version:
+        $ref: 'pageversions.yaml#/definitions/pageVersion'
+      pageTemplate:
+        $ref: 'pagetemplates.yaml#/definitions/pageTemplate'
+      permissionType:
+        $ref: '#/definitions/permissionType'
       properties:
         type: array
         items:
@@ -85,11 +101,15 @@ definitions:
     example:
     - id: PG_123456789012
       title: Example Page
+      versionId: VR_123456789012
       pageTemplateId: PGT_12345678901
+      permissionType: PR
       summary: This is an example page.
     - id: PG_123456789013
       title: Example Page 2
+      versionId: VR_123456789012
       pageTemplateId: PGT_12345678901
+      permissionType: PR
       summary: This is a second example page.
     type: array
     items:
@@ -98,13 +118,17 @@ definitions:
     example:
       id: PG_123456789012
       title: Example Page
+      versionId: VR_123456789012
       pageTemplateId: PGT_12345678901
+      permissionType: PR
       summary: This is an example page.
     type: object
     required:
     - id
     - title
     - pageTemplateId
+    - versionId
+    - permissionType
     properties:
       id:
         $ref: '#/definitions/pageId'
@@ -114,8 +138,24 @@ definitions:
       summary:
         type: string
         description: User provided summary of the page.  No more than 140 characters.
+      versionId:
+        $ref: 'pageversions.yaml#/definitions/pageVersionId'
       pageTemplateId:
         $ref: 'pagetemplates.yaml#/definitions/pageTemplateId'
+      permissionType:
+        $ref: '#/definitions/permissionType'
+  'permissionType':
+    type: string
+    enum:
+    - PR
+    - PU
+    - PO
+    - LO
+    description: |
+      * **PR**: Private. Only the owner(s) may edit/see the page.
+      * **PU**: Public.  Everyone may edit/see the page and the page is searchable.
+      * **PO**: Public Only. Everyone may see the page and the page is searchable.
+      * **LO**: Link Only. Everyone may see the page, but the page is not searchable and must be given via a link.
   'pageId':
     type: string
     example: PG_123456789012

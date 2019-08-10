@@ -73,6 +73,27 @@ func (_m *PageStore) CreatePage(record page.Page, ownerID string) (page.Page, er
 	return r0, r1
 }
 
+// GetEntirePage provides a mock function with given fields: pageGUID
+func (_m *PageStore) GetEntirePage(pageGUID string) (page.Page, error) {
+	ret := _m.Called(pageGUID)
+
+	var r0 page.Page
+	if rf, ok := ret.Get(0).(func(string) page.Page); ok {
+		r0 = rf(pageGUID)
+	} else {
+		r0 = ret.Get(0).(page.Page)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(pageGUID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetPage provides a mock function with given fields: pageGUID
 func (_m *PageStore) GetPage(pageGUID string) (page.Page, error) {
 	ret := _m.Called(pageGUID)
@@ -94,8 +115,66 @@ func (_m *PageStore) GetPage(pageGUID string) (page.Page, error) {
 	return r0, r1
 }
 
-// UpdatePage provides a mock function with given fields: record
-func (_m *PageStore) UpdatePage(record page.Page) error {
+// GetPages provides a mock function with given fields: userID, nextBatchID
+func (_m *PageStore) GetPages(userID string, nextBatchID string) ([]page.Page, error) {
+	ret := _m.Called(userID, nextBatchID)
+
+	var r0 []page.Page
+	if rf, ok := ret.Get(0).(func(string, string) []page.Page); ok {
+		r0 = rf(userID, nextBatchID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]page.Page)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(userID, nextBatchID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// GetUniquePageGUID provides a mock function with given fields: proposedPageGUID
+func (_m *PageStore) GetUniquePageGUID(proposedPageGUID string) (string, error) {
+	ret := _m.Called(proposedPageGUID)
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func(string) string); ok {
+		r0 = rf(proposedPageGUID)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(proposedPageGUID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// RemovePage provides a mock function with given fields: pageGUID
+func (_m *PageStore) RemovePage(pageGUID string) error {
+	ret := _m.Called(pageGUID)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(pageGUID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// SetPage provides a mock function with given fields: record
+func (_m *PageStore) SetPage(record page.Page) error {
 	ret := _m.Called(record)
 
 	var r0 error

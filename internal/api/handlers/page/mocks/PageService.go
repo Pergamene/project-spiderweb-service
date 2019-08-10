@@ -34,6 +34,27 @@ func (_m *PageService) CreatePage(ctx context.Context, params pageservice.Create
 	return r0, r1
 }
 
+// GetEntirePage provides a mock function with given fields: ctx, params
+func (_m *PageService) GetEntirePage(ctx context.Context, params pageservice.GetEntirePageParams) (page.Page, error) {
+	ret := _m.Called(ctx, params)
+
+	var r0 page.Page
+	if rf, ok := ret.Get(0).(func(context.Context, pageservice.GetEntirePageParams) page.Page); ok {
+		r0 = rf(ctx, params)
+	} else {
+		r0 = ret.Get(0).(page.Page)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, pageservice.GetEntirePageParams) error); ok {
+		r1 = rf(ctx, params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetPage provides a mock function with given fields: ctx, params
 func (_m *PageService) GetPage(ctx context.Context, params pageservice.GetPageParams) (page.Page, error) {
 	ret := _m.Called(ctx, params)
@@ -55,12 +76,70 @@ func (_m *PageService) GetPage(ctx context.Context, params pageservice.GetPagePa
 	return r0, r1
 }
 
-// UpdatePage provides a mock function with given fields: ctx, params
-func (_m *PageService) UpdatePage(ctx context.Context, params pageservice.UpdatePageParams) error {
+// GetPages provides a mock function with given fields: ctx, params
+func (_m *PageService) GetPages(ctx context.Context, params pageservice.GetPagesParams) ([]page.Page, int, string, error) {
+	ret := _m.Called(ctx, params)
+
+	var r0 []page.Page
+	if rf, ok := ret.Get(0).(func(context.Context, pageservice.GetPagesParams) []page.Page); ok {
+		r0 = rf(ctx, params)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]page.Page)
+		}
+	}
+
+	var r1 int
+	if rf, ok := ret.Get(1).(func(context.Context, pageservice.GetPagesParams) int); ok {
+		r1 = rf(ctx, params)
+	} else {
+		r1 = ret.Get(1).(int)
+	}
+
+	var r2 string
+	if rf, ok := ret.Get(2).(func(context.Context, pageservice.GetPagesParams) string); ok {
+		r2 = rf(ctx, params)
+	} else {
+		r2 = ret.Get(2).(string)
+	}
+
+	var r3 error
+	if rf, ok := ret.Get(3).(func(context.Context, pageservice.GetPagesParams) error); ok {
+		r3 = rf(ctx, params)
+	} else {
+		r3 = ret.Error(3)
+	}
+
+	return r0, r1, r2, r3
+}
+
+// RemovePage provides a mock function with given fields: ctx, params
+func (_m *PageService) RemovePage(ctx context.Context, params pageservice.RemovePageParams) (page.Page, error) {
+	ret := _m.Called(ctx, params)
+
+	var r0 page.Page
+	if rf, ok := ret.Get(0).(func(context.Context, pageservice.RemovePageParams) page.Page); ok {
+		r0 = rf(ctx, params)
+	} else {
+		r0 = ret.Get(0).(page.Page)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, pageservice.RemovePageParams) error); ok {
+		r1 = rf(ctx, params)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// SetPage provides a mock function with given fields: ctx, params
+func (_m *PageService) SetPage(ctx context.Context, params pageservice.SetPageParams) error {
 	ret := _m.Called(ctx, params)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, pageservice.UpdatePageParams) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, pageservice.SetPageParams) error); ok {
 		r0 = rf(ctx, params)
 	} else {
 		r0 = ret.Error(0)

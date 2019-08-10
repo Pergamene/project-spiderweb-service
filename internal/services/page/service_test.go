@@ -23,14 +23,14 @@ func TestMain(m *testing.M) {
 	os.Exit(result)
 }
 
-func getUpdatePageParams(guid, userID string) UpdatePageParams {
-	return UpdatePageParams{
-		Page:   getDefaultUpdatePagePage(guid),
+func getSetPageParams(guid, userID string) SetPageParams {
+	return SetPageParams{
+		Page:   getDefaultSetPagePage(guid),
 		UserID: userID,
 	}
 }
 
-func getDefaultUpdatePagePage(guid string) page.Page {
+func getDefaultSetPagePage(guid string) page.Page {
 	return getPage(guid, "This is a new title", "This is a new summary")
 }
 
@@ -62,28 +62,28 @@ type updatePageCalls struct {
 	returnErr error
 }
 
-func TestUpdatePage(t *testing.T) {
+func TestSetPage(t *testing.T) {
 	cases := []struct {
 		name             string
-		params           UpdatePageParams
+		params           SetPageParams
 		canEditPageCalls []canEditPageCall
 		updatePageCalls  []updatePageCalls
 		returnErr        error
 	}{
 		{
 			name:   "test proper update",
-			params: getUpdatePageParams("PG_1", "UR_1"),
+			params: getSetPageParams("PG_1", "UR_1"),
 			canEditPageCalls: []canEditPageCall{
 				{
 					paramPageGUID:   "PG_1",
 					paramPageUserID: "UR_1",
 				},
 			},
-			updatePageCalls: []updatePageCalls{{paramPage: getDefaultUpdatePagePage("PG_1")}},
+			updatePageCalls: []updatePageCalls{{paramPage: getDefaultSetPagePage("PG_1")}},
 		},
 		{
 			name:   "test unauthorized update",
-			params: getUpdatePageParams("PG_1", "UR_1"),
+			params: getSetPageParams("PG_1", "UR_1"),
 			canEditPageCalls: []canEditPageCall{
 				{
 					paramPageGUID:   "PG_1",
@@ -101,14 +101,14 @@ func TestUpdatePage(t *testing.T) {
 				pageStore.On("CanEditPage", tc.canEditPageCalls[index].paramPageGUID, tc.canEditPageCalls[index].paramPageUserID).Return(tc.canEditPageCalls[index].returnIsOwner, tc.canEditPageCalls[index].returnErr)
 			}
 			for index := range tc.updatePageCalls {
-				pageStore.On("UpdatePage", tc.updatePageCalls[index].paramPage).Return(tc.updatePageCalls[index].returnErr)
+				pageStore.On("SetPage", tc.updatePageCalls[index].paramPage).Return(tc.updatePageCalls[index].returnErr)
 			}
 			pageService = PageService{
 				PageStore: pageStore,
 			}
-			err := pageService.UpdatePage(ctx, tc.params)
+			err := pageService.SetPage(ctx, tc.params)
 			pageStore.AssertNumberOfCalls(t, "CanEditPage", len(tc.canEditPageCalls))
-			pageStore.AssertNumberOfCalls(t, "UpdatePage", len(tc.updatePageCalls))
+			pageStore.AssertNumberOfCalls(t, "SetPage", len(tc.updatePageCalls))
 			errExpected := testutils.TestErrorAgainstCase(t, err, tc.returnErr)
 			if errExpected {
 				return

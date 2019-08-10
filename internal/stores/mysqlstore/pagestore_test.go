@@ -58,7 +58,7 @@ func TestPageUpdatePage(t *testing.T) {
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
-			err = pageStore.UpdatePage(tc.paramRecord)
+			err = pageStore.SetPage(tc.paramRecord)
 			errExpected := testutils.TestErrorAgainstCase(t, err, tc.returnErr)
 			if errExpected {
 				return

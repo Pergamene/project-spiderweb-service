@@ -124,7 +124,7 @@ func TestCreatePage(t *testing.T) {
 }
 
 type updatePageCall struct {
-	pageParams pageservice.UpdatePageParams
+	pageParams pageservice.SetPageParams
 	returnErr  error
 }
 
@@ -162,7 +162,7 @@ func TestUpdatePage(t *testing.T) {
 			expectedStatusCode:   200,
 			updatePageCalls: []updatePageCall{
 				{
-					pageParams: pageservice.UpdatePageParams{
+					pageParams: pageservice.SetPageParams{
 						Page:   getPage("PG_1", 0, ""),
 						UserID: "UR_1",
 					},
@@ -182,7 +182,7 @@ func TestUpdatePage(t *testing.T) {
 			expectedStatusCode:   401,
 			updatePageCalls: []updatePageCall{
 				{
-					pageParams: pageservice.UpdatePageParams{
+					pageParams: pageservice.SetPageParams{
 						Page:   getPage("PG_1", 0, ""),
 						UserID: "UR_1",
 					},
