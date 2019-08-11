@@ -2,6 +2,7 @@ package mysqlstore
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/storeerror"
@@ -89,7 +90,7 @@ func (s PageStore) CanEditPage(guid, userID string) (bool, error) {
 		WhereClause: wrapsql.WhereClause{
 			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
 				{LeftSide: "Page.guid", Operator: "= ?"},
-				{LeftSide: "User.email", Operator: "= ?"},
+				{LeftSide: "User.guid", Operator: "= ?"},
 			},
 		},
 		Limit: 1,
@@ -215,11 +216,121 @@ func (s PageStore) GetPage(guid string) (page.Page, error) {
 }
 
 // GetPages returns a list of pages based on the nextBatchId
-func (s PageStore) GetPages(userID string, nextBatchID string, limit int) ([]page.Page, int, string, error) {
+func (s PageStore) GetPages(userID string, thisBatchID string, limit int) (pages []page.Page, total int, nextBatchID string, returnErr error) {
 	if userID == "" {
-		return nil, 0, "", errors.New("must provide userID to get pages")
+		returnErr = errors.New("must provide userID to get pages")
+		return
 	}
-	return nil, 0, "", errors.New("@TODO: GetPages")
+	var err error
+	thisPageID := 0
+	if thisBatchID != "" {
+		thisPageID, err = s.getPageID(thisBatchID)
+		if err != nil {
+			returnErr = errors.Wrapf(err, "unable to use thisBatchID: %v", thisBatchID)
+			return
+		}
+	}
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"Page.ID", "Version.guid", "PageTemplate.guid", "Page.title", "Page.summary", "Page.permission", "Page.createdAt", "Page.updatedAt"},
+		FromTable: "Page",
+		JoinClauses: []wrapsql.JoinClause{
+			{JoinTable: "PageOwner", On: wrapsql.OnClause{LeftSide: "PageOwner.Page_ID", RightSide: "Page.ID"}},
+			{JoinTable: "User", On: wrapsql.OnClause{LeftSide: "PageOwner.User_ID", RightSide: "User.ID"}},
+			{JoinTable: "Version", On: wrapsql.OnClause{LeftSide: "Page.Version_ID", RightSide: "Version.ID"}},
+			{JoinTable: "PageTemplate", On: wrapsql.OnClause{LeftSide: "Page.PageTemplate_ID", RightSide: "PageTemplate.ID"}},
+		},
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "Page.ID", Operator: fmt.Sprintf(">= %v", thisPageID)},
+				{LeftSide: "User.guid", Operator: "= ?"},
+				{LeftSide: "deletedAt", Operator: "IS NULL"},
+			},
+		},
+		Limit: limit + 1, // plus one so we can get an extra record to determine the nextBatchID
+	}
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), userID)
+	if err != nil {
+		returnErr = err
+		return
+	}
+	if err := rows.Err(); err != nil {
+		returnErr = err
+		return
+	}
+	var permissionString string
+	defer rows.Close()
+	for rows.Next() {
+		p := page.Page{}
+		err := rows.Scan(&p.ID, &p.Version.GUID, &p.PageTemplate.GUID, &p.Title, &p.Summary, &permissionString, &p.CreatedAt, &p.UpdatedAt)
+		if err != nil {
+			returnErr = err
+			return
+		}
+		pt, err := permission.GetPermissionType(permissionString)
+		if err != nil {
+			returnErr = err
+			return
+		}
+		p.PermissionType = pt
+		pages = append(pages, p)
+	}
+	if len(pages) > limit {
+		lastPage := pages[len(pages)-1]
+		nextBatchID = lastPage.GUID
+		pages = pages[:len(pages)-1]
+	}
+	total, err = s.getTotalPages(userID)
+	if err != nil {
+		returnErr = err
+	}
+	return
+}
+
+func (s PageStore) getTotalPages(userID string) (int, error) {
+	if userID == "" {
+		return -1, errors.New("must provide userID to get pages")
+	}
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"COUNT(1)"},
+		FromTable: "Page",
+		JoinClauses: []wrapsql.JoinClause{
+			{JoinTable: "PageOwner", On: wrapsql.OnClause{LeftSide: "PageOwner.Page_ID", RightSide: "Page.ID"}},
+			{JoinTable: "User", On: wrapsql.OnClause{LeftSide: "PageOwner.User_ID", RightSide: "User.ID"}},
+		},
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "User.guid", Operator: "= ?"},
+				{LeftSide: "deletedAt", Operator: "IS NULL"},
+			},
+		},
+	}
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), userID)
+	var total int
+	err = wrapsql.GetSingleRow(userID, rows, err, &total)
+	if err != nil {
+		return -1, err
+	}
+	return total, nil
+}
+
+func (s PageStore) getPageID(guid string) (int, error) {
+	if guid == "" {
+		return -1, errors.New("must provide guid to get the page id")
+	}
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"ID"},
+		FromTable: "Page",
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "guid", Operator: "= ?"},
+			},
+		},
+		Limit: 1,
+	}
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), guid)
+	var pageID int
+	err = wrapsql.GetSingleRow(guid, rows, err, &pageID)
+	return pageID, err
 }
 
 // RemovePage marks the given page and removed by setting the deletedAt property.
