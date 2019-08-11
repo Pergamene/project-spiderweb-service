@@ -23,7 +23,7 @@ type CreatePageParams struct {
 
 // CreatePage creates a new page.
 func (s PageService) CreatePage(ctx context.Context, params CreatePageParams) (page.Page, error) {
-	err := s.populatePage(ctx, &params.Page)
+	err := s.populatePageIDs(ctx, &params.Page)
 	if err != nil {
 		return page.Page{}, err
 	}
@@ -39,7 +39,7 @@ func (s PageService) CreatePage(ctx context.Context, params CreatePageParams) (p
 	return page, nil
 }
 
-func (s PageService) populatePage(ctx context.Context, p *page.Page) error {
+func (s PageService) populatePageIDs(ctx context.Context, p *page.Page) error {
 	if p.PageTemplate.GUID != "" {
 		pt, err := s.PageTemplateStore.GetPageTemplate(p.PageTemplate.GUID)
 		if err != nil {
@@ -65,7 +65,7 @@ type SetPageParams struct {
 
 // SetPage sets a page to what is provided.
 func (s PageService) SetPage(ctx context.Context, params SetPageParams) error {
-	err := s.populatePage(ctx, &params.Page)
+	err := s.populatePageIDs(ctx, &params.Page)
 	if err != nil {
 		return err
 	}
@@ -114,6 +114,10 @@ func (s PageService) GetEntirePage(ctx context.Context, params GetEntirePagePara
 	p, err := s.PageStore.GetPage(params.Page.GUID)
 	if err != nil {
 		return p, errors.Wrapf(err, "failed to get entire page: %+v", params)
+	}
+	err = s.populatePageIDs(ctx, &params.Page)
+	if err != nil {
+		return p, errors.Wrapf(err, "failed to populate page with ids: %+v", params)
 	}
 	return p, nil
 }

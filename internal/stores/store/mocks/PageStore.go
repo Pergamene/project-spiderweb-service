@@ -73,27 +73,6 @@ func (_m *PageStore) CreatePage(record page.Page, ownerID string) (page.Page, er
 	return r0, r1
 }
 
-// GetEntirePage provides a mock function with given fields: pageGUID
-func (_m *PageStore) GetEntirePage(pageGUID string) (page.Page, error) {
-	ret := _m.Called(pageGUID)
-
-	var r0 page.Page
-	if rf, ok := ret.Get(0).(func(string) page.Page); ok {
-		r0 = rf(pageGUID)
-	} else {
-		r0 = ret.Get(0).(page.Page)
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(string) error); ok {
-		r1 = rf(pageGUID)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // GetPage provides a mock function with given fields: pageGUID
 func (_m *PageStore) GetPage(pageGUID string) (page.Page, error) {
 	ret := _m.Called(pageGUID)
@@ -115,27 +94,41 @@ func (_m *PageStore) GetPage(pageGUID string) (page.Page, error) {
 	return r0, r1
 }
 
-// GetPages provides a mock function with given fields: userID, nextBatchID
-func (_m *PageStore) GetPages(userID string, nextBatchID string) ([]page.Page, error) {
-	ret := _m.Called(userID, nextBatchID)
+// GetPages provides a mock function with given fields: userID, nextBatchID, limit
+func (_m *PageStore) GetPages(userID string, nextBatchID string, limit int) ([]page.Page, int, string, error) {
+	ret := _m.Called(userID, nextBatchID, limit)
 
 	var r0 []page.Page
-	if rf, ok := ret.Get(0).(func(string, string) []page.Page); ok {
-		r0 = rf(userID, nextBatchID)
+	if rf, ok := ret.Get(0).(func(string, string, int) []page.Page); ok {
+		r0 = rf(userID, nextBatchID, limit)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]page.Page)
 		}
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(string, string) error); ok {
-		r1 = rf(userID, nextBatchID)
+	var r1 int
+	if rf, ok := ret.Get(1).(func(string, string, int) int); ok {
+		r1 = rf(userID, nextBatchID, limit)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(int)
 	}
 
-	return r0, r1
+	var r2 string
+	if rf, ok := ret.Get(2).(func(string, string, int) string); ok {
+		r2 = rf(userID, nextBatchID, limit)
+	} else {
+		r2 = ret.Get(2).(string)
+	}
+
+	var r3 error
+	if rf, ok := ret.Get(3).(func(string, string, int) error); ok {
+		r3 = rf(userID, nextBatchID, limit)
+	} else {
+		r3 = ret.Error(3)
+	}
+
+	return r0, r1, r2, r3
 }
 
 // GetUniquePageGUID provides a mock function with given fields: proposedPageGUID
