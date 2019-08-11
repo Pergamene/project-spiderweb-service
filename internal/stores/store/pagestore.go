@@ -10,7 +10,6 @@ type PageStore interface {
 	SetPage(record page.Page) error
 	CreatePage(record page.Page, ownerID string) (page.Page, error)
 	GetPage(pageGUID string) (page.Page, error)
-	GetEntirePage(pageGUID string) (page.Page, error)
-	GetPages(userID string, nextBatchID string) ([]page.Page, int, string, error)
+	GetPages(userID string, nextBatchID string, limit int) ([]page.Page, int, string, error)
 	RemovePage(pageGUID string) error
 }

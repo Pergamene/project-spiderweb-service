@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/permission"
+	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -19,17 +20,16 @@ import (
 	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/handlertestutils"
 	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/page/mocks"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
-	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
 	pageservice "github.com/Pergamene/project-spiderweb-service/internal/services/page"
 )
 
-func getPage(guid string, versionID int64, permissionType permission.Type) page.Page {
+func getPage(guid string, versionID string, permissionType permission.Type) page.Page {
 	return page.Page{
 		GUID:    guid,
 		Title:   "test title",
 		Summary: "test summary",
 		Version: version.Version{
-			ID: versionID,
+			GUID: versionID,
 		},
 		PermissionType: permissionType,
 	}
@@ -80,10 +80,10 @@ func TestCreatePage(t *testing.T) {
 			createPageCalls: []createPageCall{
 				{
 					pageParams: pageservice.CreatePageParams{
-						Page:    getPage("", 1, permission.TypePrivate),
+						Page:    getPage("", "VR_1", permission.TypePrivate),
 						OwnerID: "UR_1",
 					},
-					returnRecord: getPage("PG_1", 1, permission.TypePrivate),
+					returnRecord: getPage("PG_1", "VR_1", permission.TypePrivate),
 				},
 			},
 		},
@@ -163,7 +163,7 @@ func TestUpdatePage(t *testing.T) {
 			updatePageCalls: []updatePageCall{
 				{
 					pageParams: pageservice.SetPageParams{
-						Page:   getPage("PG_1", 0, ""),
+						Page:   getPage("PG_1", "VR_1", ""),
 						UserID: "UR_1",
 					},
 				},
@@ -183,7 +183,7 @@ func TestUpdatePage(t *testing.T) {
 			updatePageCalls: []updatePageCall{
 				{
 					pageParams: pageservice.SetPageParams{
-						Page:   getPage("PG_1", 0, ""),
+						Page:   getPage("PG_1", "VR_1", ""),
 						UserID: "UR_1",
 					},
 					returnErr: &storeerror.NotAuthorized{

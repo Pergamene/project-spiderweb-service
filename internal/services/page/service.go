@@ -111,7 +111,7 @@ func (s PageService) GetEntirePage(ctx context.Context, params GetEntirePagePara
 	if err != nil {
 		return page.Page{}, err
 	}
-	p, err := s.PageStore.GetEntirePage(params.Page.GUID)
+	p, err := s.PageStore.GetPage(params.Page.GUID)
 	if err != nil {
 		return p, errors.Wrapf(err, "failed to get entire page: %+v", params)
 	}
@@ -126,7 +126,7 @@ type GetPagesParams struct {
 
 // GetPages returns a list of pages filtered and ordered as specified.
 func (s PageService) GetPages(ctx context.Context, params GetPagesParams) ([]page.Page, int, string, error) {
-	ps, total, nextBatchID, err := s.PageStore.GetPages(params.UserID, params.NextBatchID)
+	ps, total, nextBatchID, err := s.PageStore.GetPages(params.UserID, params.NextBatchID, 10)
 	if err != nil {
 		return ps, total, nextBatchID, errors.Wrapf(err, "failed to get pages: %+v", params)
 	}

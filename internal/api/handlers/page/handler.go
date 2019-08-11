@@ -4,12 +4,13 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/nextbatch"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/pagetemplate"
+	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
+
+	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/nextbatch"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
-	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
 	pageservice "github.com/Pergamene/project-spiderweb-service/internal/services/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/storeerror"
 
@@ -159,6 +160,7 @@ func (h PageHandler) GetPage(w http.ResponseWriter, r *http.Request, p httproute
 		},
 		UserID: authData.UserID,
 	})
+	reducedPage := record.Reduce()
 	if _, ok := err.(*storeerror.NotAuthorized); ok {
 		api.RespondWith(r, w, http.StatusUnauthorized, &api.FailedAuthorization{}, err)
 		return
@@ -167,7 +169,7 @@ func (h PageHandler) GetPage(w http.ResponseWriter, r *http.Request, p httproute
 		api.RespondWith(r, w, http.StatusInternalServerError, &api.InternalErr{}, err)
 		return
 	}
-	conformedRecord := record.GetJSONConformed()
+	conformedRecord := reducedPage.GetJSONConformed()
 	api.RespondWith(r, w, http.StatusOK, conformedRecord, nil)
 }
 
@@ -198,16 +200,17 @@ func (h PageHandler) GetPages(w http.ResponseWriter, r *http.Request, p httprout
 	}
 	var conformedRecords []interface{}
 	for _, record := range records {
-		conformedRecords = append(conformedRecords, record.GetJSONConformed())
+		reducedPage := record.Reduce()
+		conformedRecords = append(conformedRecords, reducedPage.GetJSONConformed())
 	}
 	responseBody := struct {
-		batch     []interface{}       `json:"batch"`
-		total     int                 `json:"total"`
-		nextBatch nextbatch.NextBatch `json:"nextBatch"`
+		Batch     []interface{}       `json:"batch"`
+		Total     int                 `json:"total"`
+		NextBatch nextbatch.NextBatch `json:"nextBatch"`
 	}{
-		batch: conformedRecords,
-		total: total,
-		nextBatch: nextbatch.NextBatch{
+		Batch: conformedRecords,
+		Total: total,
+		NextBatch: nextbatch.NextBatch{
 			ParamKey:   "nextBatchId",
 			ParamValue: nextBatchID,
 		},

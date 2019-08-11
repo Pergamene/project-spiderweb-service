@@ -2,11 +2,11 @@ package mysqlstore
 
 import (
 	"database/sql"
-	"errors"
 	"time"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/storeerror"
 	"github.com/Pergamene/project-spiderweb-service/internal/util/wrapsql"
+	"github.com/pkg/errors"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/permission"
@@ -49,7 +49,7 @@ func (s PageStore) CreatePage(record page.Page, ownerID string) (page.Page, erro
 	record.UpdatedAt = &t
 	id, err := wrapsql.ExecSingleInsert(s.db, wrapsql.InsertQuery{
 		IntoTable: "Page",
-		InjectedValues: wrapsql.InsertInjectedValues{
+		InjectedValues: wrapsql.InjectedValues{
 			"PageTemplate_ID": record.PageTemplate.ID,
 			"Version_ID":      record.Version.ID,
 			"guid":            record.GUID,
@@ -176,77 +176,67 @@ func (s PageStore) SetPage(record page.Page) error {
 	if record.PageTemplate.ID != 0 {
 		query.InjectedValues["PageTemplate_ID"] = record.PageTemplate.ID
 	}
+	if record.DeletedAt != nil {
+		query.InjectedValues["deletedAt"] = record.DeletedAt
+	}
 	return wrapsql.ExecSingleUpdate(s.db, query, record.GUID)
 }
 
 // GetPage returns back the given page.
 func (s PageStore) GetPage(guid string) (page.Page, error) {
-	return page.Page{}, errors.New("@TODO: still need to make a different between GetPage and GetEntirePage")
-	// if s.db == nil {
-	// 	return page.Page{}, &storeerror.DBNotSetUp{}
-	// }
-	// rows, err := s.db.Query("SELECT `Version_ID`, `PageTemplate_ID`, `title`, `summary`, `permission`, `createdAt`, `updatedAt` FROM `Page` WHERE `guid` = ? AND `deletedAt` IS NULL LIMIT 1", guid)
-	// if err != nil {
-	// 	return page.Page{}, err
-	// }
-	// defer rows.Close()
-	// var versionID int64
-	// var pageTemplateID int64
-	// var title string
-	// var summary string
-	// var permissionString string
-	// var createdAt *time.Time
-	// var updatedAt *time.Time
-	// for rows.Next() {
-	// 	err = rows.Scan(&versionID, &pageTemplateID, &title, &summary, &permissionString, &createdAt, &updatedAt)
-	// 	if err != nil {
-	// 		return page.Page{}, err
-	// 	}
-	// 	err = rows.Err()
-	// 	if err != nil {
-	// 		return page.Page{}, err
-	// 	}
-	// 	p, err := permission.GetPermissionType(permissionString)
-	// 	if err != nil {
-	// 		return page.Page{}, err
-	// 	}
-	// 	return page.Page{
-	// 		Version: version.Version{
-	// 			ID: versionID,
-	// 		},
-	// 		PageTemplate: pagetemplate.PageTemplate{
-	// 			ID: pageTemplateID,
-	// 		},
-	// 		GUID:           guid,
-	// 		Title:          title,
-	// 		Summary:        summary,
-	// 		PermissionType: p,
-	// 		CreatedAt:      createdAt,
-	// 		UpdatedAt:      updatedAt,
-	// 	}, nil
-	// }
-	// return page.Page{}, &storeerror.NotFound{
-	// 	ID: guid,
-	// }
-}
-
-// GetEntirePage returns back the given page populated with details, properties, etc.
-func (s PageStore) GetEntirePage(guid string) (page.Page, error) {
-	return page.Page{}, errors.New("@TODO: GetEntirePage")
+	if guid == "" {
+		return page.Page{}, errors.New("must provide guid to get the page")
+	}
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"Page.ID", "Version.guid", "PageTemplate.guid", "Page.title", "Page.summary", "Page.permission", "Page.createdAt", "Page.updatedAt"},
+		FromTable: "Page",
+		JoinClauses: []wrapsql.JoinClause{
+			{JoinTable: "Version", On: wrapsql.OnClause{LeftSide: "Page.Version_ID", RightSide: "Version.ID"}},
+			{JoinTable: "PageTemplate", On: wrapsql.OnClause{LeftSide: "Page.PageTemplate_ID", RightSide: "PageTemplate.ID"}},
+		},
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "guid", Operator: "= ?"},
+				{LeftSide: "deletedAt", Operator: "IS NULL"},
+			},
+		},
+		Limit: 1,
+	}
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), guid)
+	var p page.Page
+	var permissionString string
+	err = wrapsql.GetSingleRow(guid, rows, err, &p.ID, &p.Version.GUID, &p.PageTemplate.GUID, &p.Title, &p.Summary, &permissionString, &p.CreatedAt, &p.UpdatedAt)
+	pt, err := permission.GetPermissionType(permissionString)
+	if err != nil {
+		return page.Page{}, err
+	}
+	p.PermissionType = pt
+	return p, err
 }
 
 // GetPages returns a list of pages based on the nextBatchId
-func (s PageStore) GetPages(userID string, nextBatchID string) ([]page.Page, int, string, error) {
+func (s PageStore) GetPages(userID string, nextBatchID string, limit int) ([]page.Page, int, string, error) {
+	if userID == "" {
+		return nil, 0, "", errors.New("must provide userID to get pages")
+	}
 	return nil, 0, "", errors.New("@TODO: GetPages")
 }
 
 // RemovePage marks the given page and removed by setting the deletedAt property.
 func (s PageStore) RemovePage(guid string) error {
-	return errors.New("@TODO: RemovePage")
+	t := time.Now()
+	return s.SetPage(page.Page{
+		GUID:      guid,
+		DeletedAt: &t,
+	})
 }
 
 // GetUniquePageGUID returns a guid for the page that is guaranteed to be unique or errors.
 // If the proposedPageGuid is not a zero-value and not unique, it will error.
 func (s PageStore) GetUniquePageGUID(proposedPageGUID string) (string, error) {
-	return proposedPageGUID, errors.New("@TODO: GetUniquePageGUID")
+	return s.getUniquePageGUID(proposedPageGUID, 0)
+}
+
+func (s PageStore) getUniquePageGUID(proposedPageGUID string, retry int) (string, error) {
+	return getUniqueGUID(s.db, "PG", 15, "Page", proposedPageGUID, 0)
 }
