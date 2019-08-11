@@ -153,20 +153,30 @@ func (s PageStore) SetPage(record page.Page) error {
 	if record.GUID == "" {
 		return errors.New("must provide record.GUID to update the page")
 	}
-	if record.Title == "" {
-		return errors.New("must provide record.Title to update the page")
+	query := wrapsql.UpdateQuery{
+		UpdateTable: "Page",
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "guid", Operator: "= ?"},
+			},
+		},
 	}
-	return errors.New("@TODO: still need to update all the other stuff that CreatePage has")
-	// if s.db == nil {
-	// 	return &storeerror.DBNotSetUp{}
-	// }
-	// statement, err := s.db.Prepare("UPDATE `Page` SET `title` = ?, `summary` = ? WHERE `guid` = ?")
-	// if err != nil {
-	// 	return err
-	// }
-	// defer statement.Close()
-	// _, err = statement.Exec(record.Title, record.Summary, record.GUID)
-	// return err
+	if record.Title != "" {
+		query.InjectedValues["title"] = record.Title
+	}
+	if record.Summary != "" {
+		query.InjectedValues["summary"] = record.Summary
+	}
+	if record.Version.ID != 0 {
+		query.InjectedValues["Version_ID"] = record.Version.ID
+	}
+	if record.PermissionType != "" {
+		query.InjectedValues["permission"] = record.PermissionType
+	}
+	if record.PageTemplate.ID != 0 {
+		query.InjectedValues["PageTemplate_ID"] = record.PageTemplate.ID
+	}
+	return wrapsql.ExecSingleUpdate(s.db, query, record.GUID)
 }
 
 // GetPage returns back the given page.

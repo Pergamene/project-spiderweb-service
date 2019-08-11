@@ -7,10 +7,16 @@ import (
 
 type InsertQuery struct {
 	IntoTable      string
-	InjectedValues InsertInjectedValues
+	InjectedValues InjectedValues
 }
 
-type InsertInjectedValues map[string]interface{}
+type UpdateQuery struct {
+	UpdateTable    string
+	InjectedValues InjectedValues
+	WhereClause    WhereClause
+}
+
+type InjectedValues map[string]interface{}
 
 type SelectStatement struct {
 	Selectors   []string
@@ -96,17 +102,29 @@ func getWhereOperationString(operation WhereOperation) string {
 }
 
 func GetInsertString(iq InsertQuery) (string, []interface{}) {
-	keys, valueStubs, values := getOrderedInsertValues(iq)
+	keys, valueStubs, values := getOrderedInsertValues(iq.InjectedValues)
 	keysString := getEscapedSequence(keys)
 	valueStubsString := strings.Join(valueStubs, ",")
 	return fmt.Sprintf("INSERT INTO %v (%v) VALUES (%v)", iq.IntoTable, keysString, valueStubsString), values
 }
 
-func getOrderedInsertValues(iq InsertQuery) (keys []string, valueStubs []string, values []interface{}) {
-	for key, value := range iq.InjectedValues {
+func getOrderedInsertValues(ivs InjectedValues) (keys []string, valueStubs []string, values []interface{}) {
+	for key, value := range ivs {
 		keys = append(keys, key)
 		values = append(values, value)
 		valueStubs = append(valueStubs, "?")
 	}
 	return
+}
+
+func GetUpdateString(iq UpdateQuery, whereClauseInjectedValues ...interface{}) (string, []interface{}) {
+	keys, _, values := getOrderedInsertValues(iq.InjectedValues)
+	values = append(values, whereClauseInjectedValues)
+	var setStrings []string
+	for _, key := range keys {
+		keyString := getEscapedString(key)
+		setStrings = append(setStrings, fmt.Sprintf("%v = %v", keyString, "?"))
+	}
+	setString := strings.Join(setStrings, ",")
+	return fmt.Sprintf("UPDATE %v SET %v", iq.UpdateTable, setString), values
 }
