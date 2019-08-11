@@ -73,20 +73,13 @@ func (request SetPageRequest) validate() (SetPageRequest, error) {
 	if request.GUID == "" {
 		return request, errors.New("must provide a page id")
 	}
-	if request.Title == "" {
-		return request, errors.New("must provide title")
+	if request.PermissionTypeString != "" {
+		permissionType, err := permission.GetPermissionType(request.PermissionTypeString)
+		if err != nil {
+			return request, errors.New("permission is not a valid value")
+		}
+		request.PermissionType = permissionType
 	}
-	if request.VersionID == "" {
-		return request, errors.New("must provide versionId")
-	}
-	if request.PageTemplateID == "" {
-		return request, errors.New("msut provide pageTemplateId")
-	}
-	permissionType, err := permission.GetPermissionType(request.PermissionTypeString)
-	if err != nil {
-		return request, errors.New("permission is not a valid value")
-	}
-	request.PermissionType = permissionType
 	return request, nil
 }
 
