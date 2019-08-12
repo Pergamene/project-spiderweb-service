@@ -274,6 +274,9 @@ func (s PageStore) GetPages(userID string, thisBatchID string, limit int) (pages
 		p.PermissionType = pt
 		pages = append(pages, p)
 	}
+	if len(pages) == 0 {
+		pages = make([]page.Page, 0)
+	}
 	if len(pages) > limit {
 		lastPage := pages[len(pages)-1]
 		nextBatchID = lastPage.GUID

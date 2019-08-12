@@ -198,10 +198,21 @@ func (h PageHandler) GetPages(w http.ResponseWriter, r *http.Request, p httprout
 		api.RespondWith(r, w, http.StatusInternalServerError, &api.InternalErr{}, err)
 		return
 	}
-	var conformedRecords []interface{}
+	conformedRecords := make([]interface{}, 0)
 	for _, record := range records {
 		reducedPage := record.Reduce()
 		conformedRecords = append(conformedRecords, reducedPage.GetJSONConformed())
+	}
+	if nextBatchID == "" {
+		responseBody := struct {
+			Batch []interface{} `json:"batch"`
+			Total int           `json:"total"`
+		}{
+			Batch: conformedRecords,
+			Total: total,
+		}
+		api.RespondWith(r, w, http.StatusOK, responseBody, nil)
+		return
 	}
 	responseBody := struct {
 		Batch     []interface{}       `json:"batch"`
