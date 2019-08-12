@@ -42,7 +42,7 @@ func TestMethodNotAllowed(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			healthcheckService := new(mocks.HealthcheckService)
 			routerHandlers := HealthcheckRouterHandlers(tc.authZ.APIPath, healthcheckService)
 			resp, respBody := handlertestutils.HandleTestRequest(handlertestutils.HandleTestRequestParams{

@@ -65,11 +65,11 @@ type SetPageParams struct {
 
 // SetPage sets a page to what is provided.
 func (s PageService) SetPage(ctx context.Context, params SetPageParams) error {
-	err := s.populatePageIDs(ctx, &params.Page)
+	_, err := s.PageStore.CanEditPage(params.Page.GUID, params.UserID)
 	if err != nil {
 		return err
 	}
-	_, err = s.PageStore.CanEditPage(params.Page.GUID, params.UserID)
+	err = s.populatePageIDs(ctx, &params.Page)
 	if err != nil {
 		return err
 	}

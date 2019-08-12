@@ -2,7 +2,6 @@
 package handlertestutils
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -43,7 +42,7 @@ func TestAPI(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			resp, respBody := HandleTestRequest(HandleTestRequestParams{
 				Method:         tc.method,
 				Endpoint:       tc.endpoint,

@@ -1,7 +1,6 @@
 package mysqlstore
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/pagetemplate"
@@ -47,7 +46,7 @@ func TestPageUpdatePage(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
