@@ -26,7 +26,7 @@ func NewPageStore(mysqldb *sql.DB) PageStore {
 }
 
 // CreatePage creates a new page.
-func (s PageStore) CreatePage(record page.Page, ownerID string) (page.Page, error) {
+func (s PageStore) CreatePage(record page.Page, ownerID int) (page.Page, error) {
 	if record.GUID == "" {
 		return record, errors.New("must provide record.GUID to create the page")
 	}
@@ -41,6 +41,9 @@ func (s PageStore) CreatePage(record page.Page, ownerID string) (page.Page, erro
 	}
 	if record.PageTemplate.ID == 0 {
 		return record, errors.New("must provide record.PageTemplate.ID to create the page")
+	}
+	if ownerID == 0 {
+		return record, errors.New("must provide ownerID to create the page")
 	}
 	if s.db == nil {
 		return record, &storeerror.DBNotSetUp{}
@@ -65,6 +68,16 @@ func (s PageStore) CreatePage(record page.Page, ownerID string) (page.Page, erro
 		return record, err
 	}
 	record.ID = id
+	_, err = wrapsql.ExecSingleInsert(s.db, wrapsql.InsertQuery{
+		IntoTable: "PageOwner",
+		InjectedValues: wrapsql.InjectedValues{
+			"Page_ID":  record.ID,
+			"Owner_ID": ownerID,
+		},
+	})
+	if err != nil {
+		return record, err
+	}
 	return record, nil
 }
 
@@ -216,7 +229,7 @@ func (s PageStore) GetPage(guid string) (page.Page, error) {
 }
 
 // GetPages returns a list of pages based on the nextBatchId
-func (s PageStore) GetPages(userID string, thisBatchID string, limit int) (pages []page.Page, total int, nextBatchID string, returnErr error) {
+func (s PageStore) GetPages(userID, thisBatchID string, limit int) (pages []page.Page, total int, nextBatchID string, returnErr error) {
 	if userID == "" {
 		returnErr = errors.New("must provide userID to get pages")
 		return

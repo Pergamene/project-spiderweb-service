@@ -112,7 +112,7 @@ func GetWhereString(where WhereClause) string {
 	for _, operation := range where.WhereOperations {
 		operationStrings = append(operationStrings, getWhereOperationString(operation))
 	}
-	return strings.Join(operationStrings, where.Operator)
+	return strings.Join(operationStrings, fmt.Sprintf(" %v ", where.Operator))
 }
 
 func getWhereOperationString(operation WhereOperation) string {
@@ -144,11 +144,16 @@ func getOrderedInsertValues(ivs InjectedValues) (keys []string, valueStubs []str
 func GetUpdateString(iq UpdateQuery, whereClauseInjectedValues ...interface{}) (string, []interface{}) {
 	keys, _, values := getOrderedInsertValues(iq.InjectedValues)
 	values = append(values, whereClauseInjectedValues)
+	whereString := GetWhereString(iq.WhereClause)
 	var setStrings []string
 	for _, key := range keys {
 		keyString := getEscapedString(key)
 		setStrings = append(setStrings, fmt.Sprintf("%v = %v", keyString, "?"))
 	}
 	setString := strings.Join(setStrings, ",")
-	return fmt.Sprintf("UPDATE %v SET %v", iq.UpdateTable, setString), values
+	statement := fmt.Sprintf("UPDATE %v SET %v", iq.UpdateTable, setString)
+	if whereString != "" {
+		statement = statement + fmt.Sprintf(" WHERE %v", whereString)
+	}
+	return statement, values
 }

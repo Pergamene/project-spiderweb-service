@@ -107,15 +107,14 @@ type GetEntirePageParams struct {
 
 // GetEntirePage returns a full page object, with properties, details, etc.
 func (s PageService) GetEntirePage(ctx context.Context, params GetEntirePageParams) (page.Page, error) {
-	_, err := s.PageStore.CanReadPage(params.Page.GUID, params.UserID)
+	p, err := s.GetPage(ctx, GetPageParams{
+		Page:   params.Page,
+		UserID: params.UserID,
+	})
 	if err != nil {
-		return page.Page{}, err
+		return p, err
 	}
-	p, err := s.PageStore.GetPage(params.Page.GUID)
-	if err != nil {
-		return p, errors.Wrapf(err, "failed to get entire page: %+v", params)
-	}
-	err = s.populatePageIDs(ctx, &params.Page)
+	err = s.populatePageIDs(ctx, &p)
 	if err != nil {
 		return p, errors.Wrapf(err, "failed to populate page with ids: %+v", params)
 	}

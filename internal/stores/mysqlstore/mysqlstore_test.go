@@ -86,6 +86,9 @@ func executeQueries(db *sql.DB, queries []string) error {
 	if db == nil {
 		return nil
 	}
+	if queries == nil {
+		return nil
+	}
 	for _, query := range queries {
 		if query == "" {
 			continue
