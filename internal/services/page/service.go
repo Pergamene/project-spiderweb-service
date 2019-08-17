@@ -13,6 +13,7 @@ type PageService struct {
 	PageStore         store.PageStore
 	PageTemplateStore store.PageTemplateStore
 	VersionStore      store.VersionStore
+	UserStore         store.UserStore
 }
 
 // CreatePageParams params for CreatePage
@@ -32,7 +33,8 @@ func (s PageService) CreatePage(ctx context.Context, params CreatePageParams) (p
 		return page.Page{}, err
 	}
 	params.Page.GUID = pageGUID
-	page, err := s.PageStore.CreatePage(params.Page, params.OwnerID)
+	u, err := s.UserStore.GetUser(params.OwnerID)
+	page, err := s.PageStore.CreatePage(params.Page, u.ID)
 	if err != nil {
 		return page, errors.Wrapf(err, "failed to create page: %+v", params)
 	}

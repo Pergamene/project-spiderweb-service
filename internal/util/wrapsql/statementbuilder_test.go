@@ -71,8 +71,8 @@ func TestGetInsertString(t *testing.T) {
 					"updatedAt":       nil,
 				},
 			},
-			returnQuery:  "INSERT INTO Page (`permission`,`createdAt`,`updatedAt`,`PageTemplate_ID`,`Version_ID`,`guid`,`title`,`summary`) VALUES (?,?,?,?,?,?,?,?)",
-			returnValues: []interface{}{1, 2, "PG_1", "Test Title", "Test Summary", permission.TypePublic, &now, nil},
+			returnQuery:  "INSERT INTO Page (`PageTemplate_ID`,`Version_ID`,`createdAt`,`guid`,`permission`,`summary`,`title`,`updatedAt`) VALUES (?,?,?,?,?,?,?,?)",
+			returnValues: []interface{}{1, 2, &now, "PG_1", permission.TypePublic, "Test Summary", "Test Title", nil},
 		},
 	}
 	for _, tc := range cases {
@@ -111,13 +111,13 @@ func TestGetUpdateString(t *testing.T) {
 			paramWhereClauseInjectedValues: []interface{}{
 				"PG_1",
 			},
-			returnQuery:  "UPDATE Page SET `title` = ?,`summary` = ?,`Version_ID` = ?,`permission` = ? WHERE `guid` = ?",
-			returnValues: []interface{}{"Test Title", "Test Summary", 1, permission.TypePublic},
+			returnQuery:  "UPDATE Page SET `Version_ID` = ?,`permission` = ?,`summary` = ?,`title` = ? WHERE `guid` = ?",
+			returnValues: []interface{}{1, permission.TypePublic, "Test Summary", "Test Title", "PG_1"},
 		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			query, valueStubs := GetUpdateString(tc.paramUpdateQuery, tc.paramWhereClauseInjectedValues)
+			query, valueStubs := GetUpdateString(tc.paramUpdateQuery, tc.paramWhereClauseInjectedValues...)
 			require.Equal(t, tc.returnQuery, query)
 			require.Equal(t, tc.returnValues, valueStubs)
 		})

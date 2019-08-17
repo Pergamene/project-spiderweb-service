@@ -146,7 +146,7 @@ func clearTableForTest(db *sql.DB, table string) error {
 	if db == nil {
 		return nil
 	}
-	statement, err := db.Prepare(fmt.Sprintf("DELETE FROM `%v`", table))
+	statement, err := db.Prepare(fmt.Sprintf("TRUNCATE TABLE `%v`", table))
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/Pergamene/project-spiderweb-service/internal/util/testutils"
 	"github.com/stretchr/testify/require"
 
+	"github.com/Pergamene/project-spiderweb-service/internal/models/appuser"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/pagetemplate"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
@@ -193,15 +194,22 @@ type getUniquePageGUIDCall struct {
 
 type createPageCall struct {
 	paramPage    page.Page
-	paramOwnerID string
+	paramOwnerID int64
 	returnPage   page.Page
 	returnErr    error
+}
+
+type getUserCall struct {
+	paramUserGUID string
+	returnUser    appuser.User
+	returnErr     error
 }
 
 func TestCreatePage(t *testing.T) {
 	cases := []struct {
 		name                   string
 		params                 CreatePageParams
+		getUserCalls           []getUserCall
 		getPageTemplateCalls   []getPageTemplateCall
 		getVersionCalls        []getVersionCall
 		getUniquePageGUIDCalls []getUniquePageGUIDCall
@@ -218,6 +226,12 @@ func TestCreatePage(t *testing.T) {
 					Version:      version.Version{GUID: "VR_1"},
 				},
 				OwnerID: "UR_1",
+			},
+			getUserCalls: []getUserCall{
+				{
+					paramUserGUID: "UR_1",
+					returnUser:    appuser.User{ID: 1, GUID: "UR_1"},
+				},
 			},
 			getPageTemplateCalls: []getPageTemplateCall{
 				{
@@ -244,7 +258,7 @@ func TestCreatePage(t *testing.T) {
 						PageTemplate: pagetemplate.PageTemplate{GUID: "PGT_1", ID: 1, Name: "TEST_NAME_TEMPLATE"},
 						Version:      version.Version{GUID: "VR_1", ID: 1, Name: "TEST_NAME_VERSION"},
 					},
-					paramOwnerID: "UR_1",
+					paramOwnerID: 1,
 					returnPage: page.Page{
 						ID:           1,
 						GUID:         "PG_NEW",
@@ -266,8 +280,12 @@ func TestCreatePage(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			pageStore := new(mocks.PageStore)
+			userStore := new(mocks.UserStore)
 			pageTemplateStore := new(mocks.PageTemplateStore)
 			versionStore := new(mocks.VersionStore)
+			for index := range tc.getUserCalls {
+				userStore.On("GetUser", tc.getUserCalls[index].paramUserGUID).Return(tc.getUserCalls[index].returnUser, tc.getUserCalls[index].returnErr)
+			}
 			for index := range tc.getPageTemplateCalls {
 				pageTemplateStore.On("GetPageTemplate", tc.getPageTemplateCalls[index].paramPageTemplateGUID).Return(tc.getPageTemplateCalls[index].returnPageTemplate, tc.getPageTemplateCalls[index].returnErr)
 			}
@@ -284,8 +302,10 @@ func TestCreatePage(t *testing.T) {
 				PageStore:         pageStore,
 				PageTemplateStore: pageTemplateStore,
 				VersionStore:      versionStore,
+				UserStore:         userStore,
 			}
 			result, err := pageService.CreatePage(ctx, tc.params)
+			userStore.AssertNumberOfCalls(t, "GetUser", len(tc.getUserCalls))
 			pageTemplateStore.AssertNumberOfCalls(t, "GetPageTemplate", len(tc.getPageTemplateCalls))
 			versionStore.AssertNumberOfCalls(t, "GetVersion", len(tc.getVersionCalls))
 			pageStore.AssertNumberOfCalls(t, "GetUniquePageGUID", len(tc.getUniquePageGUIDCalls))

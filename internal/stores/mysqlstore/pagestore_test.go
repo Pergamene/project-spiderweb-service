@@ -1,10 +1,13 @@
 package mysqlstore
 
 import (
+	"database/sql"
+	"errors"
 	"testing"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/pagetemplate"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/permission"
+	"github.com/Pergamene/project-spiderweb-service/internal/stores/storeerror"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
@@ -12,13 +15,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func clearAllTables(db *sql.DB) error {
+	tables := []string{"Page", "PageOwner", "PageTemplate", "User", "Version"}
+	for _, table := range tables {
+		err := clearTableForTest(db, table)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func TestCreatePage(t *testing.T) {
 	cases := []struct {
 		name                   string
 		shouldReplaceDBWithNil bool
 		preTestQueries         []string
 		paramRecord            page.Page
-		paramOwnerID           int
+		paramOwnerID           int64
 		expectedPageGUID       string
 		expectedDPPage         page.Page
 		expectedOwnerGUID      string
@@ -26,8 +40,12 @@ func TestCreatePage(t *testing.T) {
 		returnErr              error
 	}{
 		{
-			name:           "happy path",
-			preTestQueries: []string{"INSERT INTO User (`guid`, `email`) VALUES( \"UR_1\", \"bob@test.com\")"},
+			name: "happy path",
+			preTestQueries: []string{
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_1\", \"bob@test.com\", NOW(), NOW())",
+				"INSERT INTO Version (`guid`, `name`, `createdAt`, `updatedAt`) VALUES( \"VR_1\", \"TEST_VERSION\", NOW(), NOW())",
+				"INSERT INTO PageTemplate (`Version_ID`, `guid`, `name`, `hasProperties`, `hasDetails`, `hasRelations`, `createdAt`, `updatedAt`) VALUES(1, \"PGT_1\", \"TEST_TEMPLATE\", true, true, true, NOW(), NOW())",
+			},
 			paramRecord: page.Page{
 				GUID:           "PG_1",
 				Title:          "new title",
@@ -39,21 +57,23 @@ func TestCreatePage(t *testing.T) {
 			paramOwnerID:     1,
 			expectedPageGUID: "PG_1",
 			expectedDPPage: page.Page{
+				ID:             1,
 				GUID:           "PG_1",
 				Title:          "new title",
 				Summary:        "new summary",
-				Version:        version.Version{ID: 1},
+				Version:        version.Version{GUID: "VR_1"},
 				PermissionType: permission.TypePrivate,
-				PageTemplate:   pagetemplate.PageTemplate{ID: 1},
+				PageTemplate:   pagetemplate.PageTemplate{GUID: "PGT_1"},
 			},
 			expectedOwnerGUID: "UR_1",
 			returnPage: page.Page{
+				ID:             1,
 				GUID:           "PG_1",
 				Title:          "new title",
 				Summary:        "new summary",
-				Version:        version.Version{ID: 1},
+				Version:        version.Version{ID: 1, GUID: "VR_1"},
 				PermissionType: permission.TypePrivate,
-				PageTemplate:   pagetemplate.PageTemplate{ID: 1},
+				PageTemplate:   pagetemplate.PageTemplate{ID: 1, GUID: "PGT_1"},
 			},
 		},
 	}
@@ -62,11 +82,7 @@ func TestCreatePage(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearTableForTest(pageStore.db, "Page")
-			require.NoError(t, err)
-			err = clearTableForTest(pageStore.db, "User")
-			require.NoError(t, err)
-			err = clearTableForTest(pageStore.db, "PageOwner")
+			err := clearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
@@ -78,6 +94,9 @@ func TestCreatePage(t *testing.T) {
 			if errExpected {
 				return
 			}
+			result.CreatedAt = nil
+			result.UpdatedAt = nil
+			result.DeletedAt = nil
 			require.Equal(t, tc.returnPage, result)
 			p, err := pageStore.GetPage(tc.expectedPageGUID)
 			require.NoError(t, err)
@@ -106,7 +125,7 @@ func TestCanEditPage(t *testing.T) {
 			name: "happy path",
 			preTestQueries: []string{
 				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_1\", \"original title\", \"\", \"PR\", NOW(), NOW() )",
-				"INSERT INTO User (`guid`, `email`) VALUES( \"UR_1\", \"bob@test.com\")",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_1\", \"bob@test.com\", NOW(), NOW())",
 				"INSERT INTO PageOwner (`Page_ID`, `User_ID`, `isOwner`) VALUES( 1, 1, true)",
 			},
 			paramGUID:     "PG_1",
@@ -119,11 +138,7 @@ func TestCanEditPage(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearTableForTest(pageStore.db, "Page")
-			require.NoError(t, err)
-			err = clearTableForTest(pageStore.db, "User")
-			require.NoError(t, err)
-			err = clearTableForTest(pageStore.db, "PageOwner")
+			err := clearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
@@ -154,7 +169,7 @@ func TestCanReadPage(t *testing.T) {
 			name: "happy path, is owner",
 			preTestQueries: []string{
 				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_1\", \"original title\", \"\", \"PR\", NOW(), NOW() )",
-				"INSERT INTO User (`guid`, `email`) VALUES( \"UR_1\", \"bob@test.com\")",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_1\", \"bob@test.com\", NOW(), NOW())",
 				"INSERT INTO PageOwner (`Page_ID`, `User_ID`, `isOwner`) VALUES( 1, 1, true)",
 			},
 			paramGUID:     "PG_1",
@@ -165,8 +180,8 @@ func TestCanReadPage(t *testing.T) {
 			name: "happy path, not owner but public",
 			preTestQueries: []string{
 				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_1\", \"original title\", \"\", \"PU\", NOW(), NOW() )",
-				"INSERT INTO User (`guid`, `email`) VALUES( \"UR_1\", \"bob@test.com\")",
-				"INSERT INTO User (`guid`, `email`) VALUES( \"UR_2\", \"bob2@test.com\")",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_1\", \"bob@test.com\", NOW(), NOW())",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_2\", \"bob2@test.com\", NOW(), NOW())",
 				"INSERT INTO PageOwner (`Page_ID`, `User_ID`, `isOwner`) VALUES( 1, 2, true)",
 			},
 			paramGUID:     "PG_1",
@@ -177,8 +192,8 @@ func TestCanReadPage(t *testing.T) {
 			name: "happy path, not owner and private: can't read",
 			preTestQueries: []string{
 				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_1\", \"original title\", \"\", \"PR\", NOW(), NOW() )",
-				"INSERT INTO User (`guid`, `email`) VALUES( \"UR_1\", \"bob@test.com\")",
-				"INSERT INTO User (`guid`, `email`) VALUES( \"UR_2\", \"bob2@test.com\")",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_1\", \"bob@test.com\", NOW(), NOW())",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_2\", \"bob2@test.com\", NOW(), NOW())",
 				"INSERT INTO PageOwner (`Page_ID`, `User_ID`, `isOwner`) VALUES( 1, 2, true)",
 			},
 			paramGUID:     "PG_1",
@@ -191,11 +206,7 @@ func TestCanReadPage(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearTableForTest(pageStore.db, "Page")
-			require.NoError(t, err)
-			err = clearTableForTest(pageStore.db, "User")
-			require.NoError(t, err)
-			err = clearTableForTest(pageStore.db, "PageOwner")
+			err := clearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
@@ -223,8 +234,13 @@ func TestSetPage(t *testing.T) {
 		returnErr              error
 	}{
 		{
-			name:           "happy path",
-			preTestQueries: []string{"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_1\", \"original title\", \"\", \"PR\", NOW(), NOW() )"},
+			name: "happy path",
+			preTestQueries: []string{
+				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_1\", \"original title\", \"\", \"PR\", NOW(), NOW() )",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_1\", \"bob@test.com\", NOW(), NOW())",
+				"INSERT INTO Version (`guid`, `name`, `createdAt`, `updatedAt`) VALUES( \"VR_1\", \"TEST_VERSION\", NOW(), NOW())",
+				"INSERT INTO PageTemplate (`Version_ID`, `guid`, `name`, `hasProperties`, `hasDetails`, `hasRelations`, `createdAt`, `updatedAt`) VALUES(1, \"PGT_1\", \"TEST_TEMPLATE\", true, true, true, NOW(), NOW())",
+			},
 			paramRecord: page.Page{
 				GUID:    "PG_1",
 				Title:   "new title",
@@ -232,11 +248,12 @@ func TestSetPage(t *testing.T) {
 			},
 			expectedPageGUID: "PG_1",
 			expectedDPPage: page.Page{
+				ID: 1,
 				Version: version.Version{
-					ID: 1,
+					GUID: "VR_1",
 				},
 				PageTemplate: pagetemplate.PageTemplate{
-					ID: 1,
+					GUID: "PGT_1",
 				},
 				GUID:           "PG_1",
 				Title:          "new title",
@@ -250,7 +267,7 @@ func TestSetPage(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearTableForTest(pageStore.db, "Page")
+			err := clearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
@@ -272,7 +289,7 @@ func TestSetPage(t *testing.T) {
 	}
 }
 
-func GetPage(t *testing.T) {
+func TestGetPage(t *testing.T) {
 	cases := []struct {
 		name                   string
 		shouldReplaceDBWithNil bool
@@ -282,19 +299,24 @@ func GetPage(t *testing.T) {
 		returnErr              error
 	}{
 		{
-			name:           "happy path",
-			preTestQueries: []string{"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_1\", \"original title\", \"\", \"PR\", NOW(), NOW() )"},
-			paramGUID:      "PG_1",
+			name: "happy path",
+			preTestQueries: []string{
+				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_1\", \"original title\", \"\", \"PR\", NOW(), NOW() )",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_1\", \"bob@test.com\", NOW(), NOW())",
+				"INSERT INTO Version (`guid`, `name`, `createdAt`, `updatedAt`) VALUES( \"VR_1\", \"TEST_VERSION\", NOW(), NOW())",
+				"INSERT INTO PageTemplate (`Version_ID`, `guid`, `name`, `hasProperties`, `hasDetails`, `hasRelations`, `createdAt`, `updatedAt`) VALUES(1, \"PGT_1\", \"TEST_TEMPLATE\", true, true, true, NOW(), NOW())",
+			},
+			paramGUID: "PG_1",
 			returnPage: page.Page{
+				ID: 1,
 				Version: version.Version{
-					ID: 1,
+					GUID: "VR_1",
 				},
 				PageTemplate: pagetemplate.PageTemplate{
-					ID: 1,
+					GUID: "PGT_1",
 				},
 				GUID:           "PG_1",
-				Title:          "new title",
-				Summary:        "new summary",
+				Title:          "original title",
 				PermissionType: permission.TypePrivate,
 			},
 		},
@@ -304,7 +326,7 @@ func GetPage(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearTableForTest(pageStore.db, "Page")
+			err := clearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
@@ -324,7 +346,7 @@ func GetPage(t *testing.T) {
 	}
 }
 
-func GetPages(t *testing.T) {
+func TestGetPages(t *testing.T) {
 	cases := []struct {
 		name                   string
 		shouldReplaceDBWithNil bool
@@ -340,34 +362,39 @@ func GetPages(t *testing.T) {
 		{
 			name: "happy path",
 			preTestQueries: []string{
+				"INSERT INTO Version (`guid`, `name`, `createdAt`, `updatedAt`) VALUES( \"VR_1\", \"TEST_VERSION\", NOW(), NOW())",
+				"INSERT INTO PageTemplate (`Version_ID`, `guid`, `name`, `hasProperties`, `hasDetails`, `hasRelations`, `createdAt`, `updatedAt`) VALUES(1, \"PGT_1\", \"TEST_TEMPLATE\", true, true, true, NOW(), NOW())",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_1\", \"bob@test.com\", NOW(), NOW())",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_2\", \"bob2@test.com\", NOW(), NOW())",
 				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_1\", \"test title\", \"\", \"PR\", NOW(), NOW() )",
 				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_2\", \"test title 2\", \"some kind of summary\", \"PU\", NOW(), NOW() )",
 				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_3\", \"test title 3\", \"\", \"PR\", NOW(), NOW() )",
 				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_4\", \"test title 4\", \"\", \"PR\", NOW(), NOW() )",
-				"INSERT INTO User (`guid`, `email`) VALUES( \"UR_1\", \"bob@test.com\")",
-				"INSERT INTO User (`guid`, `email`) VALUES( \"UR_2\", \"bob2@test.com\")",
 				"INSERT INTO PageOwner (`Page_ID`, `User_ID`, `isOwner`) VALUES( 1, 1, true)",
 				"INSERT INTO PageOwner (`Page_ID`, `User_ID`, `isOwner`) VALUES( 2, 1, true)",
 				"INSERT INTO PageOwner (`Page_ID`, `User_ID`, `isOwner`) VALUES( 3, 1, true)",
 				"INSERT INTO PageOwner (`Page_ID`, `User_ID`, `isOwner`) VALUES( 4, 2, true)",
 			},
-			paramUserID:      "PG_1",
+			paramUserID:      "UR_1",
 			paramThisBatchID: "",
 			paramLimit:       2,
 			returnPages: []page.Page{
 				{
-					Version:        version.Version{ID: 1},
-					PageTemplate:   pagetemplate.PageTemplate{ID: 1},
+					ID:             1,
 					GUID:           "PG_1",
+					Version:        version.Version{GUID: "VR_1"},
+					PageTemplate:   pagetemplate.PageTemplate{GUID: "PGT_1"},
 					Title:          "test title",
 					PermissionType: permission.TypePrivate,
 				},
 				{
-					Version:        version.Version{ID: 1},
-					PageTemplate:   pagetemplate.PageTemplate{ID: 1},
+					ID:             2,
 					GUID:           "PG_2",
+					Version:        version.Version{GUID: "VR_1"},
+					PageTemplate:   pagetemplate.PageTemplate{GUID: "PGT_1"},
 					Title:          "test title 2",
-					PermissionType: permission.TypePrivate,
+					Summary:        "some kind of summary",
+					PermissionType: permission.TypePublic,
 				},
 			},
 			returnNextBatchID: "PG_3",
@@ -376,26 +403,29 @@ func GetPages(t *testing.T) {
 		{
 			name: "happy path, but with a next batch id used to offset request",
 			preTestQueries: []string{
+				"INSERT INTO Version (`guid`, `name`, `createdAt`, `updatedAt`) VALUES( \"VR_1\", \"TEST_VERSION\", NOW(), NOW())",
+				"INSERT INTO PageTemplate (`Version_ID`, `guid`, `name`, `hasProperties`, `hasDetails`, `hasRelations`, `createdAt`, `updatedAt`) VALUES(1, \"PGT_1\", \"TEST_TEMPLATE\", true, true, true, NOW(), NOW())",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_1\", \"bob@test.com\", NOW(), NOW())",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_2\", \"bob2@test.com\", NOW(), NOW())",
 				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_1\", \"test title\", \"\", \"PR\", NOW(), NOW() )",
 				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_2\", \"test title 2\", \"some kind of summary\", \"PU\", NOW(), NOW() )",
 				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_3\", \"test title 3\", \"\", \"PR\", NOW(), NOW() )",
 				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_4\", \"test title 4\", \"\", \"PR\", NOW(), NOW() )",
-				"INSERT INTO User (`guid`, `email`) VALUES( \"UR_1\", \"bob@test.com\")",
-				"INSERT INTO User (`guid`, `email`) VALUES( \"UR_2\", \"bob2@test.com\")",
 				"INSERT INTO PageOwner (`Page_ID`, `User_ID`, `isOwner`) VALUES( 1, 1, true)",
 				"INSERT INTO PageOwner (`Page_ID`, `User_ID`, `isOwner`) VALUES( 2, 1, true)",
 				"INSERT INTO PageOwner (`Page_ID`, `User_ID`, `isOwner`) VALUES( 3, 1, true)",
 				"INSERT INTO PageOwner (`Page_ID`, `User_ID`, `isOwner`) VALUES( 4, 2, true)",
 			},
-			paramUserID:      "PG_1",
+			paramUserID:      "UR_1",
 			paramThisBatchID: "PG_3",
 			paramLimit:       2,
 			returnPages: []page.Page{
 				{
-					Version:        version.Version{ID: 1},
-					PageTemplate:   pagetemplate.PageTemplate{ID: 1},
+					ID:             3,
+					Version:        version.Version{GUID: "VR_1"},
+					PageTemplate:   pagetemplate.PageTemplate{GUID: "PGT_1"},
 					GUID:           "PG_3",
-					Title:          "test title",
+					Title:          "test title 3",
 					PermissionType: permission.TypePrivate,
 				},
 			},
@@ -407,7 +437,7 @@ func GetPages(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearTableForTest(pageStore.db, "Page")
+			err := clearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
@@ -419,14 +449,124 @@ func GetPages(t *testing.T) {
 			if errExpected {
 				return
 			}
-			for _, p := range pages {
-				p.CreatedAt = nil
-				p.UpdatedAt = nil
-				p.DeletedAt = nil
+			for i := range pages {
+				pages[i].CreatedAt = nil
+				pages[i].UpdatedAt = nil
+				pages[i].DeletedAt = nil
 			}
 			require.Equal(t, tc.returnPages, pages)
 			require.Equal(t, tc.returnTotal, total)
 			require.Equal(t, tc.returnNextBatchID, nextBatchID)
+		})
+	}
+}
+
+func TestRemovePage(t *testing.T) {
+	cases := []struct {
+		name                   string
+		shouldReplaceDBWithNil bool
+		preTestQueries         []string
+		paramGUID              string
+		expectedPageGUID       string
+		returnErr              error
+	}{
+		{
+			name: "happy path",
+			preTestQueries: []string{
+				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_1\", \"original title\", \"\", \"PR\", NOW(), NOW() )",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_1\", \"bob@test.com\", NOW(), NOW())",
+				"INSERT INTO Version (`guid`, `name`, `createdAt`, `updatedAt`) VALUES( \"VR_1\", \"TEST_VERSION\", NOW(), NOW())",
+				"INSERT INTO PageTemplate (`Version_ID`, `guid`, `name`, `hasProperties`, `hasDetails`, `hasRelations`, `createdAt`, `updatedAt`) VALUES(1, \"PGT_1\", \"TEST_TEMPLATE\", true, true, true, NOW(), NOW())",
+			},
+			paramGUID:        "PG_1",
+			expectedPageGUID: "PG_1",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			pageStore := PageStore{
+				db: mysqldb,
+			}
+			err := clearAllTables(pageStore.db)
+			require.NoError(t, err)
+			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
+			require.NoError(t, err)
+			if tc.shouldReplaceDBWithNil {
+				pageStore.db = nil
+			}
+			err = pageStore.RemovePage(tc.paramGUID)
+			errExpected := testutils.TestErrorAgainstCase(t, err, tc.returnErr)
+			if errExpected {
+				return
+			}
+			if tc.expectedPageGUID == "" {
+				return
+			}
+			_, err = pageStore.GetPage(tc.expectedPageGUID)
+			if _, ok := err.(*storeerror.NotFound); !ok {
+				t.Fatalf("Page %v was not deleted", tc.expectedPageGUID)
+			}
+		})
+	}
+}
+
+func TestGetUniquePageGUID(t *testing.T) {
+	cases := []struct {
+		name                   string
+		shouldReplaceDBWithNil bool
+		preTestQueries         []string
+		paramProposedPageGUID  string
+		returnPageGUIDPrefix   string
+		returnPageGUIDLength   int
+		returnErr              error
+	}{
+		{
+			name:                 "happy path",
+			preTestQueries:       []string{},
+			returnPageGUIDPrefix: "PG_",
+			returnPageGUIDLength: 15,
+		},
+		{
+			name:                  "happy path, but with a proposal",
+			preTestQueries:        []string{},
+			paramProposedPageGUID: "PG_123456789012",
+			returnPageGUIDPrefix:  "PG_",
+			returnPageGUIDLength:  15,
+		},
+		{
+			name:                  "proposal is bad",
+			preTestQueries:        []string{},
+			paramProposedPageGUID: "PG_123456789",
+			returnErr:             errors.New("proposed guid must be 15 characters"),
+		},
+		{
+			name: "proposal already exists",
+			preTestQueries: []string{
+				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_123456789012\", \"original title\", \"\", \"PR\", NOW(), NOW() )",
+			},
+			paramProposedPageGUID: "PG_123456789012",
+			returnErr:             errors.New("the proposed guid PG_123456789012 already exists"),
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			pageStore := PageStore{
+				db: mysqldb,
+			}
+			err := clearAllTables(pageStore.db)
+			require.NoError(t, err)
+			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
+			require.NoError(t, err)
+			if tc.shouldReplaceDBWithNil {
+				pageStore.db = nil
+			}
+			result, err := pageStore.GetUniquePageGUID(tc.paramProposedPageGUID)
+			errExpected := testutils.TestErrorAgainstCase(t, err, tc.returnErr)
+			if errExpected {
+				return
+			}
+			require.Equal(t, tc.returnPageGUIDLength, len(result))
+			require.Equal(t, tc.returnPageGUIDPrefix, result[:len(tc.returnPageGUIDPrefix)])
 		})
 	}
 }

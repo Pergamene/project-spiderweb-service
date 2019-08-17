@@ -2,6 +2,7 @@ package wrapsql
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -132,10 +133,13 @@ func GetInsertString(iq InsertQuery) (string, []interface{}) {
 }
 
 func getOrderedInsertValues(ivs InjectedValues) (keys []string, valueStubs []string, values []interface{}) {
-	for key, value := range ivs {
+	for key := range ivs {
 		keys = append(keys, key)
-		values = append(values, value)
 		valueStubs = append(valueStubs, "?")
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		values = append(values, ivs[key])
 	}
 	return
 }
@@ -143,7 +147,7 @@ func getOrderedInsertValues(ivs InjectedValues) (keys []string, valueStubs []str
 // GetUpdateString returns a statement string intended for an UPDATE call.
 func GetUpdateString(iq UpdateQuery, whereClauseInjectedValues ...interface{}) (string, []interface{}) {
 	keys, _, values := getOrderedInsertValues(iq.InjectedValues)
-	values = append(values, whereClauseInjectedValues)
+	values = append(values, whereClauseInjectedValues...)
 	whereString := GetWhereString(iq.WhereClause)
 	var setStrings []string
 	for _, key := range keys {

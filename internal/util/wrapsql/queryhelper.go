@@ -48,7 +48,7 @@ func ExecSingleInsert(db *sql.DB, iq InsertQuery) (lastInsertID int64, err error
 // ExecSingleUpdate executes a single UPDATE command
 func ExecSingleUpdate(db *sql.DB, iq UpdateQuery, whereClauseInjectedValues ...interface{}) (err error) {
 	var statement *sql.Stmt
-	queryString, orderedValues := GetUpdateString(iq, whereClauseInjectedValues)
+	queryString, orderedValues := GetUpdateString(iq, whereClauseInjectedValues...)
 	statement, err = db.Prepare(queryString)
 	if err != nil {
 		return

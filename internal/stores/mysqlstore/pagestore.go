@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/storeerror"
+	"github.com/Pergamene/project-spiderweb-service/internal/util/guidgen"
 	"github.com/Pergamene/project-spiderweb-service/internal/util/wrapsql"
 	"github.com/pkg/errors"
 
@@ -26,7 +27,7 @@ func NewPageStore(mysqldb *sql.DB) PageStore {
 }
 
 // CreatePage creates a new page.
-func (s PageStore) CreatePage(record page.Page, ownerID int) (page.Page, error) {
+func (s PageStore) CreatePage(record page.Page, ownerID int64) (page.Page, error) {
 	if record.GUID == "" {
 		return record, errors.New("must provide record.GUID to create the page")
 	}
@@ -71,8 +72,9 @@ func (s PageStore) CreatePage(record page.Page, ownerID int) (page.Page, error) 
 	_, err = wrapsql.ExecSingleInsert(s.db, wrapsql.InsertQuery{
 		IntoTable: "PageOwner",
 		InjectedValues: wrapsql.InjectedValues{
-			"Page_ID":  record.ID,
-			"Owner_ID": ownerID,
+			"Page_ID": record.ID,
+			"User_ID": ownerID,
+			"isOwner": true,
 		},
 	})
 	if err != nil {
@@ -125,13 +127,12 @@ func (s PageStore) CanEditPage(guid, userID string) (bool, error) {
 func (s PageStore) CanReadPage(guid, userID string) (bool, error) {
 	isOwner, err := s.CanEditPage(guid, userID)
 	if err != nil {
-		return isOwner, err
+		if _, ok := err.(*storeerror.NotAuthorized); !ok {
+			return isOwner, err
+		}
 	}
 	if isOwner {
 		return isOwner, nil
-	}
-	if guid == "" {
-		return isOwner, errors.New("must provide a guid to check privileges")
 	}
 	if s.db == nil {
 		return isOwner, &storeerror.DBNotSetUp{}
@@ -168,7 +169,8 @@ func (s PageStore) SetPage(record page.Page) error {
 		return errors.New("must provide record.GUID to update the page")
 	}
 	query := wrapsql.UpdateQuery{
-		UpdateTable: "Page",
+		UpdateTable:    "Page",
+		InjectedValues: wrapsql.InjectedValues{},
 		WhereClause: wrapsql.WhereClause{
 			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
 				{LeftSide: "guid", Operator: "= ?"},
@@ -210,16 +212,21 @@ func (s PageStore) GetPage(guid string) (page.Page, error) {
 		},
 		WhereClause: wrapsql.WhereClause{
 			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
-				{LeftSide: "guid", Operator: "= ?"},
-				{LeftSide: "deletedAt", Operator: "IS NULL"},
+				{LeftSide: "Page.guid", Operator: "= ?"},
+				{LeftSide: "Page.deletedAt", Operator: "IS NULL"},
 			},
 		},
 		Limit: 1,
 	}
 	rows, err := s.db.Query(wrapsql.GetSelectString(statement), guid)
-	var p page.Page
+	p := page.Page{
+		GUID: guid,
+	}
 	var permissionString string
 	err = wrapsql.GetSingleRow(guid, rows, err, &p.ID, &p.Version.GUID, &p.PageTemplate.GUID, &p.Title, &p.Summary, &permissionString, &p.CreatedAt, &p.UpdatedAt)
+	if err != nil {
+		return page.Page{}, err
+	}
 	pt, err := permission.GetPermissionType(permissionString)
 	if err != nil {
 		return page.Page{}, err
@@ -244,7 +251,7 @@ func (s PageStore) GetPages(userID, thisBatchID string, limit int) (pages []page
 		}
 	}
 	statement := wrapsql.SelectStatement{
-		Selectors: []string{"Page.ID", "Version.guid", "PageTemplate.guid", "Page.title", "Page.summary", "Page.permission", "Page.createdAt", "Page.updatedAt"},
+		Selectors: []string{"Page.guid", "Page.ID", "Version.guid", "PageTemplate.guid", "Page.title", "Page.summary", "Page.permission", "Page.createdAt", "Page.updatedAt"},
 		FromTable: "Page",
 		JoinClauses: []wrapsql.JoinClause{
 			{JoinTable: "PageOwner", On: wrapsql.OnClause{LeftSide: "PageOwner.Page_ID", RightSide: "Page.ID"}},
@@ -256,7 +263,7 @@ func (s PageStore) GetPages(userID, thisBatchID string, limit int) (pages []page
 			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
 				{LeftSide: "Page.ID", Operator: fmt.Sprintf(">= %v", thisPageID)},
 				{LeftSide: "User.guid", Operator: "= ?"},
-				{LeftSide: "deletedAt", Operator: "IS NULL"},
+				{LeftSide: "Page.deletedAt", Operator: "IS NULL"},
 			},
 		},
 		Limit: limit + 1, // plus one so we can get an extra record to determine the nextBatchID
@@ -274,7 +281,7 @@ func (s PageStore) GetPages(userID, thisBatchID string, limit int) (pages []page
 	defer rows.Close()
 	for rows.Next() {
 		p := page.Page{}
-		err := rows.Scan(&p.ID, &p.Version.GUID, &p.PageTemplate.GUID, &p.Title, &p.Summary, &permissionString, &p.CreatedAt, &p.UpdatedAt)
+		err := rows.Scan(&p.GUID, &p.ID, &p.Version.GUID, &p.PageTemplate.GUID, &p.Title, &p.Summary, &permissionString, &p.CreatedAt, &p.UpdatedAt)
 		if err != nil {
 			returnErr = err
 			return
@@ -316,7 +323,7 @@ func (s PageStore) getTotalPages(userID string) (int, error) {
 		WhereClause: wrapsql.WhereClause{
 			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
 				{LeftSide: "User.guid", Operator: "= ?"},
-				{LeftSide: "deletedAt", Operator: "IS NULL"},
+				{LeftSide: "Page.deletedAt", Operator: "IS NULL"},
 			},
 		},
 	}
@@ -365,5 +372,9 @@ func (s PageStore) GetUniquePageGUID(proposedPageGUID string) (string, error) {
 }
 
 func (s PageStore) getUniquePageGUID(proposedPageGUID string, retry int) (string, error) {
+	err := guidgen.CheckProposedGUID(proposedPageGUID, "PG", 15)
+	if err != nil {
+		return "", err
+	}
 	return getUniqueGUID(s.db, "PG", 15, "Page", proposedPageGUID, 0)
 }

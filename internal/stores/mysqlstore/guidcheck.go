@@ -29,7 +29,7 @@ func getUniqueGUID(db *sql.DB, prefix string, length int, table, proposedGUID st
 	err = wrapsql.GetSingleRow(guid, rows, err, &resGUID)
 	if err == nil {
 		if proposedGUID != "" {
-			return "", errors.Errorf("The proposed guid %v already exists", proposedGUID)
+			return "", errors.Errorf("the proposed guid %v already exists", proposedGUID)
 		}
 		if retry >= guidgen.MaxGUIDRetryAttempts {
 			return "", guidgen.ErrMaxGUIDRetryAttempts
