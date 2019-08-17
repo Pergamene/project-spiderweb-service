@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func clearAllTables(db *sql.DB) error {
+func testPageStoreClearAllTables(db *sql.DB) error {
 	tables := []string{"Page", "PageOwner", "PageTemplate", "User", "Version"}
 	for _, table := range tables {
 		err := clearTableForTest(db, table)
@@ -82,7 +82,7 @@ func TestCreatePage(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearAllTables(pageStore.db)
+			err := testPageStoreClearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
@@ -138,7 +138,7 @@ func TestCanEditPage(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearAllTables(pageStore.db)
+			err := testPageStoreClearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
@@ -206,7 +206,7 @@ func TestCanReadPage(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearAllTables(pageStore.db)
+			err := testPageStoreClearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
@@ -267,7 +267,7 @@ func TestSetPage(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearAllTables(pageStore.db)
+			err := testPageStoreClearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
@@ -326,7 +326,7 @@ func TestGetPage(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearAllTables(pageStore.db)
+			err := testPageStoreClearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
@@ -437,7 +437,7 @@ func TestGetPages(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearAllTables(pageStore.db)
+			err := testPageStoreClearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
@@ -487,7 +487,7 @@ func TestRemovePage(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearAllTables(pageStore.db)
+			err := testPageStoreClearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
@@ -553,7 +553,7 @@ func TestGetUniquePageGUID(t *testing.T) {
 			pageStore := PageStore{
 				db: mysqldb,
 			}
-			err := clearAllTables(pageStore.db)
+			err := testPageStoreClearAllTables(pageStore.db)
 			require.NoError(t, err)
 			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
 			require.NoError(t, err)
