@@ -223,7 +223,7 @@ func TestCanReadPage(t *testing.T) {
 	}
 }
 
-func TestSetPage(t *testing.T) {
+func TestUpdatePage(t *testing.T) {
 	cases := []struct {
 		name                   string
 		shouldReplaceDBWithNil bool
@@ -274,7 +274,7 @@ func TestSetPage(t *testing.T) {
 			if tc.shouldReplaceDBWithNil {
 				pageStore.db = nil
 			}
-			err = pageStore.SetPage(tc.paramRecord)
+			err = pageStore.UpdatePage(tc.paramRecord)
 			errExpected := testutils.TestErrorAgainstCase(t, err, tc.returnErr)
 			if errExpected {
 				return

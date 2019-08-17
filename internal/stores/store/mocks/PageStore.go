@@ -165,8 +165,8 @@ func (_m *PageStore) RemovePage(pageGUID string) error {
 	return r0
 }
 
-// SetPage provides a mock function with given fields: record
-func (_m *PageStore) SetPage(record page.Page) error {
+// UpdatePage provides a mock function with given fields: record
+func (_m *PageStore) UpdatePage(record page.Page) error {
 	ret := _m.Called(record)
 
 	var r0 error

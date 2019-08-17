@@ -128,8 +128,8 @@ func TestCreatePage(t *testing.T) {
 	}
 }
 
-type setPageCall struct {
-	pageParams pageservice.SetPageParams
+type updatePageCall struct {
+	pageParams pageservice.UpdatePageParams
 	returnErr  error
 }
 
@@ -144,7 +144,7 @@ func TestUpdatePage(t *testing.T) {
 		datacenter           string
 		expectedResponseBody string
 		expectedStatusCode   int
-		setPageCalls         []setPageCall
+		updatePageCalls         []updatePageCall
 	}{
 		{
 			name:                 "not authenticated",
@@ -165,9 +165,9 @@ func TestUpdatePage(t *testing.T) {
 			authZ:                handlertestutils.DefaultAuthZ(),
 			expectedResponseBody: "{\"meta\":{\"httpStatus\":\"200 - OK\"}}\n",
 			expectedStatusCode:   200,
-			setPageCalls: []setPageCall{
+			updatePageCalls: []updatePageCall{
 				{
-					pageParams: pageservice.SetPageParams{
+					pageParams: pageservice.UpdatePageParams{
 						Page:   getPage("PG_1", "test title", "test summary", "", "", ""),
 						UserID: "UR_1",
 					},
@@ -185,9 +185,9 @@ func TestUpdatePage(t *testing.T) {
 			authZ:                handlertestutils.DefaultAuthZ(),
 			expectedResponseBody: "{\"meta\":{\"httpStatus\":\"401 - Unauthorized\",\"message\":\"not authorized\"}}\n",
 			expectedStatusCode:   401,
-			setPageCalls: []setPageCall{
+			updatePageCalls: []updatePageCall{
 				{
-					pageParams: pageservice.SetPageParams{
+					pageParams: pageservice.UpdatePageParams{
 						Page:   getPage("PG_1", "test title", "test summary", "", "", ""),
 						UserID: "UR_1",
 					},
@@ -203,12 +203,12 @@ func TestUpdatePage(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			pageService := new(mocks.PageService)
-			for index := range tc.setPageCalls {
-				pageService.On("SetPage", mock.Anything, tc.setPageCalls[index].pageParams).Return(tc.setPageCalls[index].returnErr)
+			for index := range tc.updatePageCalls {
+				pageService.On("UpdatePage", mock.Anything, tc.updatePageCalls[index].pageParams).Return(tc.updatePageCalls[index].returnErr)
 			}
 			routerHandlers := PageRouterHandlers(tc.authZ.APIPath, pageService)
 			resp, respBody := handlertestutils.HandleTestRequest(handlertestutils.HandleTestRequestParams{
-				Method:         http.MethodPut,
+				Method:         http.MethodPatch,
 				Endpoint:       fmt.Sprintf("pages/%v", tc.pageID),
 				Headers:        tc.headers,
 				Body:           strings.NewReader(tc.requestBody),
@@ -218,7 +218,7 @@ func TestUpdatePage(t *testing.T) {
 			})
 			require.Equal(t, tc.expectedResponseBody, respBody)
 			require.Equal(t, tc.expectedStatusCode, resp.StatusCode)
-			pageService.AssertNumberOfCalls(t, "SetPage", len(tc.setPageCalls))
+			pageService.AssertNumberOfCalls(t, "UpdatePage", len(tc.updatePageCalls))
 		})
 	}
 }

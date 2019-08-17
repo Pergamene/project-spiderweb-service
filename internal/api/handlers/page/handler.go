@@ -21,7 +21,7 @@ import (
 // PageService see Service for more details
 type PageService interface {
 	CreatePage(ctx context.Context, params pageservice.CreatePageParams) (page.Page, error)
-	SetPage(ctx context.Context, params pageservice.SetPageParams) error
+	UpdatePage(ctx context.Context, params pageservice.UpdatePageParams) error
 	RemovePage(ctx context.Context, params pageservice.RemovePageParams) error
 	GetPages(ctx context.Context, params pageservice.GetPagesParams) ([]page.Page, int, string, error)
 	GetPage(ctx context.Context, params pageservice.GetPageParams) (page.Page, error)
@@ -71,9 +71,9 @@ func (h PageHandler) CreatePage(w http.ResponseWriter, r *http.Request, p httpro
 	api.RespondWith(r, w, http.StatusOK, map[string]string{"id": record.GUID}, nil)
 }
 
-// SetPage see Service for more details
-func (h PageHandler) SetPage(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	request, err := NewSetPageRequest(r, p)
+// UpdatePage see Service for more details
+func (h PageHandler) UpdatePage(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	request, err := NewUpdatePageRequest(r, p)
 	if err != nil {
 		api.RespondWith(r, w, http.StatusBadRequest, err, err)
 		return
@@ -84,7 +84,7 @@ func (h PageHandler) SetPage(w http.ResponseWriter, r *http.Request, p httproute
 		api.RespondWith(r, w, http.StatusInternalServerError, &api.InternalErr{}, errors.Wrap(err, "failed to get auth data"))
 		return
 	}
-	err = h.PageService.SetPage(ctx, pageservice.SetPageParams{
+	err = h.PageService.UpdatePage(ctx, pageservice.UpdatePageParams{
 		Page: page.Page{
 			GUID:    request.GUID,
 			Title:   request.Title,

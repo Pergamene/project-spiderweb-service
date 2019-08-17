@@ -47,8 +47,8 @@ func (request CreatePageRequest) validate() (CreatePageRequest, error) {
 	return request, nil
 }
 
-// SetPageRequest parameters from the SetPage call
-type SetPageRequest struct {
+// UpdatePageRequest parameters from the UpdatePage call
+type UpdatePageRequest struct {
 	GUID                 string
 	Title                string `json:"title"`
 	Summary              string `json:"summary"`
@@ -58,9 +58,9 @@ type SetPageRequest struct {
 	PageTemplateID       string `json:"pageTemplateId"`
 }
 
-// NewSetPageRequest extracts the SetPageRequest
-func NewSetPageRequest(r *http.Request, p httprouter.Params) (SetPageRequest, error) {
-	var request SetPageRequest
+// NewUpdatePageRequest extracts the UpdatePageRequest
+func NewUpdatePageRequest(r *http.Request, p httprouter.Params) (UpdatePageRequest, error) {
+	var request UpdatePageRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		return request, errors.New("invalid request")
@@ -69,7 +69,7 @@ func NewSetPageRequest(r *http.Request, p httprouter.Params) (SetPageRequest, er
 	return request.validate()
 }
 
-func (request SetPageRequest) validate() (SetPageRequest, error) {
+func (request UpdatePageRequest) validate() (UpdatePageRequest, error) {
 	if request.GUID == "" {
 		return request, errors.New("must provide a page id")
 	}

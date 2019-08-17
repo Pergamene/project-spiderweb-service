@@ -61,24 +61,24 @@ type canEditPageCall struct {
 	returnErr       error
 }
 
-type setPageCall struct {
+type updatePageCall struct {
 	paramPage page.Page
 	returnErr error
 }
 
-func TestSetPage(t *testing.T) {
+func TestUpdatePage(t *testing.T) {
 	cases := []struct {
 		name                 string
-		params               SetPageParams
+		params               UpdatePageParams
 		canEditPageCalls     []canEditPageCall
 		getPageTemplateCalls []getPageTemplateCall
 		getVersionCalls      []getVersionCall
-		setPageCalls         []setPageCall
+		updatePageCalls         []updatePageCall
 		returnErr            error
 	}{
 		{
 			name: "test happy path",
-			params: SetPageParams{
+			params: UpdatePageParams{
 				Page: page.Page{
 					GUID:  "PG_1",
 					Title: "New Title",
@@ -91,14 +91,14 @@ func TestSetPage(t *testing.T) {
 					paramPageUserID: "UR_1",
 				},
 			},
-			setPageCalls: []setPageCall{{paramPage: page.Page{
+			updatePageCalls: []updatePageCall{{paramPage: page.Page{
 				GUID:  "PG_1",
 				Title: "New Title",
 			}}},
 		},
 		{
 			name: "test update of version and page template",
-			params: SetPageParams{
+			params: UpdatePageParams{
 				Page: page.Page{
 					GUID:         "PG_1",
 					Title:        "New Title",
@@ -125,7 +125,7 @@ func TestSetPage(t *testing.T) {
 					returnVersion:    version.Version{GUID: "VR_1", ID: 1, Name: "TEST_NAME_VERSION"},
 				},
 			},
-			setPageCalls: []setPageCall{{paramPage: page.Page{
+			updatePageCalls: []updatePageCall{{paramPage: page.Page{
 				GUID:         "PG_1",
 				Title:        "New Title",
 				PageTemplate: pagetemplate.PageTemplate{GUID: "PGT_1", ID: 1, Name: "TEST_NAME_TEMPLATE"},
@@ -134,7 +134,7 @@ func TestSetPage(t *testing.T) {
 		},
 		{
 			name: "test unauthorized call",
-			params: SetPageParams{
+			params: UpdatePageParams{
 				Page: page.Page{
 					GUID:  "PG_1",
 					Title: "New Title",
@@ -165,19 +165,19 @@ func TestSetPage(t *testing.T) {
 			for index := range tc.canEditPageCalls {
 				pageStore.On("CanEditPage", tc.canEditPageCalls[index].paramPageGUID, tc.canEditPageCalls[index].paramPageUserID).Return(tc.canEditPageCalls[index].returnIsOwner, tc.canEditPageCalls[index].returnErr)
 			}
-			for index := range tc.setPageCalls {
-				pageStore.On("SetPage", tc.setPageCalls[index].paramPage).Return(tc.setPageCalls[index].returnErr)
+			for index := range tc.updatePageCalls {
+				pageStore.On("UpdatePage", tc.updatePageCalls[index].paramPage).Return(tc.updatePageCalls[index].returnErr)
 			}
 			pageService = PageService{
 				PageStore:         pageStore,
 				PageTemplateStore: pageTemplateStore,
 				VersionStore:      versionStore,
 			}
-			err := pageService.SetPage(ctx, tc.params)
+			err := pageService.UpdatePage(ctx, tc.params)
 			pageTemplateStore.AssertNumberOfCalls(t, "GetPageTemplate", len(tc.getPageTemplateCalls))
 			versionStore.AssertNumberOfCalls(t, "GetVersion", len(tc.getVersionCalls))
 			pageStore.AssertNumberOfCalls(t, "CanEditPage", len(tc.canEditPageCalls))
-			pageStore.AssertNumberOfCalls(t, "SetPage", len(tc.setPageCalls))
+			pageStore.AssertNumberOfCalls(t, "UpdatePage", len(tc.updatePageCalls))
 			errExpected := testutils.TestErrorAgainstCase(t, err, tc.returnErr)
 			if errExpected {
 				return

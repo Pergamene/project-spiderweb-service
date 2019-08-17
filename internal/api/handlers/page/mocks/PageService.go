@@ -127,12 +127,12 @@ func (_m *PageService) RemovePage(ctx context.Context, params pageservice.Remove
 	return r0
 }
 
-// SetPage provides a mock function with given fields: ctx, params
-func (_m *PageService) SetPage(ctx context.Context, params pageservice.SetPageParams) error {
+// UpdatePage provides a mock function with given fields: ctx, params
+func (_m *PageService) UpdatePage(ctx context.Context, params pageservice.UpdatePageParams) error {
 	ret := _m.Called(ctx, params)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, pageservice.SetPageParams) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, pageservice.UpdatePageParams) error); ok {
 		r0 = rf(ctx, params)
 	} else {
 		r0 = ret.Error(0)

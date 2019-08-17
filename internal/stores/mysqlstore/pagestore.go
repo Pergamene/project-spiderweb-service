@@ -163,8 +163,8 @@ func (s PageStore) CanReadPage(guid, userID string) (bool, error) {
 	return p.IsPublic(), nil
 }
 
-// SetPage sets the given page.
-func (s PageStore) SetPage(record page.Page) error {
+// UpdatePage sets the given page.
+func (s PageStore) UpdatePage(record page.Page) error {
 	if record.GUID == "" {
 		return errors.New("must provide record.GUID to update the page")
 	}
@@ -359,7 +359,7 @@ func (s PageStore) getPageID(guid string) (int, error) {
 // RemovePage marks the given page and removed by setting the deletedAt property.
 func (s PageStore) RemovePage(guid string) error {
 	t := time.Now()
-	return s.SetPage(page.Page{
+	return s.UpdatePage(page.Page{
 		GUID:      guid,
 		DeletedAt: &t,
 	})

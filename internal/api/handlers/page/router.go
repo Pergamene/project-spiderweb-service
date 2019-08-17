@@ -24,9 +24,9 @@ func PageRouterHandlers(apiPath string, pageService PageService) []api.RouterHan
 		Handle:   handler.CreatePage,
 	})
 	routerHandlers = append(routerHandlers, api.RouterHandler{
-		Method:   http.MethodPut,
+		Method:   http.MethodPatch,
 		Endpoint: fmt.Sprintf("/%v/pages/:%v", apiPath, PageIDRouteKey),
-		Handle:   handler.SetPage,
+		Handle:   handler.UpdatePage,
 	})
 	routerHandlers = append(routerHandlers, api.RouterHandler{
 		Method:   http.MethodDelete,

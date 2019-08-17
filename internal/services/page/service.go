@@ -59,14 +59,14 @@ func (s PageService) populatePageIDs(ctx context.Context, p *page.Page) error {
 	return nil
 }
 
-// SetPageParams params for SetPage
-type SetPageParams struct {
+// UpdatePageParams params for UpdatePage
+type UpdatePageParams struct {
 	Page   page.Page
 	UserID string
 }
 
-// SetPage sets a page to what is provided.
-func (s PageService) SetPage(ctx context.Context, params SetPageParams) error {
+// UpdatePage sets a page to what is provided.
+func (s PageService) UpdatePage(ctx context.Context, params UpdatePageParams) error {
 	_, err := s.PageStore.CanEditPage(params.Page.GUID, params.UserID)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func (s PageService) SetPage(ctx context.Context, params SetPageParams) error {
 	if err != nil {
 		return err
 	}
-	err = s.PageStore.SetPage(params.Page)
+	err = s.PageStore.UpdatePage(params.Page)
 	if err != nil {
 		return errors.Wrapf(err, "failed to update page: %+v", params)
 	}
