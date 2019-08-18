@@ -37,7 +37,7 @@ func (request CreatePageRequest) validate() (CreatePageRequest, error) {
 		return request, errors.New("must provide versionId")
 	}
 	if request.PageTemplateID == "" {
-		return request, errors.New("msut provide pageTemplateId")
+		return request, errors.New("must provide pageTemplateId")
 	}
 	permissionType, err := permission.GetPermissionType(request.PermissionTypeString)
 	if err != nil {

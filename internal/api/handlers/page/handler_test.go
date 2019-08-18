@@ -144,7 +144,7 @@ func TestUpdatePage(t *testing.T) {
 		datacenter           string
 		expectedResponseBody string
 		expectedStatusCode   int
-		updatePageCalls         []updatePageCall
+		updatePageCalls      []updatePageCall
 	}{
 		{
 			name:                 "not authenticated",

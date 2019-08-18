@@ -73,7 +73,7 @@ func TestUpdatePage(t *testing.T) {
 		canEditPageCalls     []canEditPageCall
 		getPageTemplateCalls []getPageTemplateCall
 		getVersionCalls      []getVersionCall
-		updatePageCalls         []updatePageCall
+		updatePageCalls      []updatePageCall
 		returnErr            error
 	}{
 		{
