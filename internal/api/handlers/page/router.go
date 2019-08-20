@@ -24,14 +24,29 @@ func PageRouterHandlers(apiPath string, pageService PageService) []api.RouterHan
 		Handle:   handler.CreatePage,
 	})
 	routerHandlers = append(routerHandlers, api.RouterHandler{
-		Method:   http.MethodPut,
+		Method:   http.MethodPatch,
 		Endpoint: fmt.Sprintf("/%v/pages/:%v", apiPath, PageIDRouteKey),
 		Handle:   handler.UpdatePage,
+	})
+	routerHandlers = append(routerHandlers, api.RouterHandler{
+		Method:   http.MethodDelete,
+		Endpoint: fmt.Sprintf("/%v/pages/:%v", apiPath, PageIDRouteKey),
+		Handle:   handler.DeletePage,
+	})
+	routerHandlers = append(routerHandlers, api.RouterHandler{
+		Method:   http.MethodGet,
+		Endpoint: fmt.Sprintf("/%v/pages", apiPath),
+		Handle:   handler.GetPages,
 	})
 	routerHandlers = append(routerHandlers, api.RouterHandler{
 		Method:   http.MethodGet,
 		Endpoint: fmt.Sprintf("/%v/pages/:%v", apiPath, PageIDRouteKey),
 		Handle:   handler.GetPage,
+	})
+	routerHandlers = append(routerHandlers, api.RouterHandler{
+		Method:   http.MethodGet,
+		Endpoint: fmt.Sprintf("/%v/pages/:%v/full", apiPath, PageIDRouteKey),
+		Handle:   handler.GetEntirePage,
 	})
 	return routerHandlers
 }

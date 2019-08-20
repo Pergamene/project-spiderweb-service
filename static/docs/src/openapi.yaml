@@ -283,12 +283,13 @@ paths:
                 $ref: 'pages.yaml#/definitions/page'
               meta:
                 $ref: '#/definitions/meta'
-    put:
+    patch:
       tags:
       - page
-      summary: Set Page
-      description: Sets the provided page.
-      operationId: setPage
+      summary: Update Page
+      description: |
+        Updates the provided page with any of the parameters provided. Anything not provided or set to empty is ignored.
+      operationId: updatePage
       parameters:
       - $ref: '#/parameters/pageIdPath'
       - $ref: '#/parameters/pageBody'

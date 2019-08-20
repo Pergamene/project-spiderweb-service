@@ -3,7 +3,6 @@ package healthcheckservice
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"testing"
 
@@ -55,7 +54,7 @@ func TestIsHealthy(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			healthcheckStore := new(mocks.HealthcheckStore)
 			for index := range tc.isHealthyCalls {
 				healthcheckStore.On("IsHealthy").Return(tc.isHealthyCalls[index].returnIsHealthy, tc.isHealthyCalls[index].returnErr)

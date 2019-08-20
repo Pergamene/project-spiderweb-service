@@ -87,9 +87,15 @@ func main() {
 func setupHandler(apiPath, staticPath, datacenter string, mysqldb *sql.DB) (http.Handler, error) {
 	var handler http.Handler
 	pageStore := mysqlstore.NewPageStore(mysqldb)
+	userStore := mysqlstore.NewUserStore(mysqldb)
 	healthcheckStore := mysqlstore.NewHealthcheckStore(mysqldb)
+	pageTemplateStore := mysqlstore.NewPageTemplateStore(mysqldb)
+	versionStore := mysqlstore.NewVersionStore(mysqldb)
 	pageService := pageservice.PageService{
-		PageStore: pageStore,
+		PageStore:         pageStore,
+		PageTemplateStore: pageTemplateStore,
+		VersionStore:      versionStore,
+		UserStore:         userStore,
 	}
 	healthcheckService := healthcheckservice.HealthcheckService{
 		HealthcheckStore: healthcheckStore,

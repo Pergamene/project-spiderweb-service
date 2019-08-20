@@ -2,7 +2,6 @@ package mysqlstore
 
 import (
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/util/testutils"
@@ -33,7 +32,7 @@ func TestHealthcheckIsHealthy(t *testing.T) {
 			returnIsHealthy: false,
 		},
 		{
-			name:                   "db not setup",
+			name: "db not setup",
 			shouldReplaceDBWithNil: true,
 			preTestQueries:         []string{"INSERT INTO `healthcheck` (`status`) VALUES (\"ok\")"},
 			returnIsHealthy:        false,
@@ -41,7 +40,7 @@ func TestHealthcheckIsHealthy(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		t.Run(fmt.Sprintf(tc.name), func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			healthcheckStore := HealthcheckStore{
 				db: mysqldb,
 			}
