@@ -35,6 +35,7 @@ type SelectStatement struct {
 	FromTable   string
 	JoinClauses []JoinClause
 	WhereClause WhereClause
+	OrderClause OrderClause
 	Limit       int
 }
 
@@ -63,6 +64,12 @@ type WhereClause struct {
 	WhereOperations []WhereOperation
 }
 
+// OrderClause is used to generate an ORDER BY clause.
+type OrderClause struct {
+	Column string
+	SortBy string
+}
+
 // GetSelectString returns a statement string intended for a SELECT call.
 func GetSelectString(ss SelectStatement) string {
 	selectString := getEscapedSequence(ss.Selectors)
@@ -74,6 +81,9 @@ func GetSelectString(ss SelectStatement) string {
 	}
 	if whereString != "" {
 		statement = statement + fmt.Sprintf(" WHERE %v", whereString)
+	}
+	if ss.OrderClause.Column != "" {
+		statement = statement + fmt.Sprintf(" ORDER BY %v %v", getEscapedString(ss.OrderClause.Column), ss.OrderClause.SortBy)
 	}
 	if ss.Limit != 0 {
 		statement = statement + fmt.Sprintf(" LIMIT %v", ss.Limit)

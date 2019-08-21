@@ -406,6 +406,10 @@ func (s PageStore) GetPageProperties(pageGUID string) (returnProperties []proper
 				{LeftSide: "PagePropertyNumber.deletedAt", Operator: "IS NULL"},
 			},
 		},
+		OrderClause: wrapsql.OrderClause{
+			Column: "PagePropertyOrder.order",
+			SortBy: "ASC",
+		},
 	}
 	rows, err := s.db.Query(wrapsql.GetSelectString(statement), pageGUID)
 	if err != nil {
@@ -436,23 +440,6 @@ func (s PageStore) GetPageProperties(pageGUID string) (returnProperties []proper
 	}
 	if len(returnProperties) == 0 {
 		returnProperties = make([]property.Property, 0)
-	}
-	returnProperties, returnErr = orderProperties(returnProperties, orderValues)
-	return
-}
-
-func orderProperties(properties []property.Property, orderValues []int64) (returnProperties []property.Property, returnErr error) {
-	if len(properties) != len(orderValues) {
-		returnErr = errors.New("properties do not have matching order values")
-		return
-	}
-	returnProperties = make([]property.Property, len(properties))
-	for index, orderValue := range orderValues {
-		if returnProperties[orderValue].ID != 0 {
-			returnErr = errors.Errorf("order value %v was used more than once", orderValue)
-			return
-		}
-		returnProperties[orderValue] = properties[index]
 	}
 	return
 }
