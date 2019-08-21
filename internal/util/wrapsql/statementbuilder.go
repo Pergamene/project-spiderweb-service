@@ -19,6 +19,13 @@ type UpdateQuery struct {
 	WhereClause    WhereClause
 }
 
+// DeleteQuery is used to generate a delete query
+type DeleteQuery struct {
+	FromTable   string
+	JoinClauses []JoinClause
+	WhereClause WhereClause
+}
+
 // InjectedValues are a mapping of key/value pairs where the key is the name of the table column and the value is it's injected value.
 type InjectedValues map[string]interface{}
 
@@ -156,6 +163,22 @@ func GetUpdateString(iq UpdateQuery, whereClauseInjectedValues ...interface{}) (
 	}
 	setString := strings.Join(setStrings, ",")
 	statement := fmt.Sprintf("UPDATE %v SET %v", iq.UpdateTable, setString)
+	if whereString != "" {
+		statement = statement + fmt.Sprintf(" WHERE %v", whereString)
+	}
+	return statement, values
+}
+
+// GetDeleteString returns a statement string intended for an UPDATE call.
+func GetDeleteString(iq DeleteQuery, whereClauseInjectedValues ...interface{}) (string, []interface{}) {
+	var values []interface{}
+	values = append(values, whereClauseInjectedValues...)
+	whereString := GetWhereString(iq.WhereClause)
+	statement := fmt.Sprintf("DELETE FROM %v", iq.FromTable)
+	joinString := GetJoinsString(iq.JoinClauses)
+	if joinString != "" {
+		statement = statement + " " + joinString
+	}
 	if whereString != "" {
 		statement = statement + fmt.Sprintf(" WHERE %v", whereString)
 	}

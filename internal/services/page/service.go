@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
+	"github.com/Pergamene/project-spiderweb-service/internal/models/property"
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/store"
 	"github.com/pkg/errors"
 )
@@ -109,6 +110,10 @@ type GetEntirePageParams struct {
 
 // GetEntirePage returns a full page object, with properties, details, etc.
 func (s PageService) GetEntirePage(ctx context.Context, params GetEntirePageParams) (page.Page, error) {
+	_, err := s.PageStore.CanReadPage(params.Page.GUID, params.UserID)
+	if err != nil {
+		return page.Page{}, err
+	}
 	p, err := s.GetPage(ctx, GetPageParams{
 		Page:   params.Page,
 		UserID: params.UserID,
@@ -153,6 +158,46 @@ func (s PageService) RemovePage(ctx context.Context, params RemovePageParams) er
 	err = s.PageStore.RemovePage(params.Page.GUID)
 	if err != nil {
 		return errors.Wrapf(err, "failed to remove page: %+v", params)
+	}
+	return nil
+}
+
+// GetPagePropertiesParams params for GetPageProperties
+type GetPagePropertiesParams struct {
+	Page   page.Page
+	UserID string
+}
+
+// GetPageProperties returns the page's properties.
+func (s PageService) GetPageProperties(ctx context.Context, params GetPagePropertiesParams) ([]property.Property, error) {
+	ps := make([]property.Property, 0)
+	_, err := s.PageStore.CanReadPage(params.Page.GUID, params.UserID)
+	if err != nil {
+		return ps, err
+	}
+	ps, err = s.PageStore.GetPageProperties(params.Page.GUID)
+	if err != nil {
+		return ps, errors.Wrapf(err, "failed to get page properties: %+v", params)
+	}
+	return ps, nil
+}
+
+// ReplacePagePropertiesParams params for ReplacePageProperties
+type ReplacePagePropertiesParams struct {
+	Page       page.Page
+	Properties []property.Property
+	UserID     string
+}
+
+// ReplacePageProperties replaces the current page's properties with the new properties.
+func (s PageService) ReplacePageProperties(ctx context.Context, params ReplacePagePropertiesParams) error {
+	_, err := s.PageStore.CanEditPage(params.Page.GUID, params.UserID)
+	if err != nil {
+		return err
+	}
+	err = s.PageStore.ReplacePageProperties(params.Page.GUID, params.Properties)
+	if err != nil {
+		return errors.Wrapf(err, "failed to replace page properties: %+v", params)
 	}
 	return nil
 }

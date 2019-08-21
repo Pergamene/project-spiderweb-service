@@ -12,6 +12,7 @@ import (
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/permission"
+	"github.com/Pergamene/project-spiderweb-service/internal/models/property"
 )
 
 // PageStore is the mysql for pages
@@ -377,4 +378,127 @@ func (s PageStore) getUniquePageGUID(proposedPageGUID string, retry int) (string
 		return "", err
 	}
 	return getUniqueGUID(s.db, "PG", 15, "Page", proposedPageGUID, 0)
+}
+
+// GetPageProperties returns the page's properties.
+func (s PageStore) GetPageProperties(pageGUID string) (returnProperties []property.Property, returnErr error) {
+	if pageGUID == "" {
+		returnErr = errors.New("must provide pageGUID to get the page properties")
+		return
+	}
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"Property.ID", "Property.type", "Property.key", "PagePropertyString.value", "PagePropertyNumber.value", "PagePropertyOrder.order"},
+		FromTable: "Page",
+		JoinClauses: []wrapsql.JoinClause{
+			{JoinTable: "PagePropertyString", On: wrapsql.OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyString.Page_ID"}},
+			{JoinTable: "PagePropertyNumber", On: wrapsql.OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyNumber.Page_ID"}},
+			{JoinTable: "Property", On: wrapsql.OnClause{LeftSide: "PagePropertyString.Property_ID", RightSide: "Property.ID"}},
+			{JoinTable: "Property", On: wrapsql.OnClause{LeftSide: "PagePropertyNumber.Property_ID", RightSide: "Property.ID"}},
+			{JoinTable: "PagePropertyOrder", On: wrapsql.OnClause{LeftSide: "PagePropertyOrder.Page_ID", RightSide: "Page.ID"}},
+			{JoinTable: "PagePropertyOrder", On: wrapsql.OnClause{LeftSide: "PagePropertyOrder.Property_ID", RightSide: "Property.ID"}},
+		},
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "Page.guid", Operator: "= ?"},
+				{LeftSide: "Page.deletedAt", Operator: "IS NULL"},
+				{LeftSide: "Property.deletedAt", Operator: "IS NULL"},
+				{LeftSide: "PagePropertyString.deletedAt", Operator: "IS NULL"},
+				{LeftSide: "PagePropertyNumber.deletedAt", Operator: "IS NULL"},
+			},
+		},
+	}
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), pageGUID)
+	if err != nil {
+		returnErr = err
+		return
+	}
+	if err := rows.Err(); err != nil {
+		returnErr = err
+		return
+	}
+	var orderValues []int64
+	defer rows.Close()
+	for rows.Next() {
+		var orderValue int64
+		dbp := property.DBProperty{}
+		err := rows.Scan(&dbp.ID, &dbp.Type, &dbp.Key, &dbp.StringValue, &dbp.NumberValue, &orderValue)
+		if err != nil {
+			returnErr = err
+			return
+		}
+		p, err := dbp.GetProperty()
+		if err != nil {
+			returnErr = err
+			return
+		}
+		returnProperties = append(returnProperties, p)
+		orderValues = append(orderValues, orderValue)
+	}
+	if len(returnProperties) == 0 {
+		returnProperties = make([]property.Property, 0)
+	}
+	returnProperties, returnErr = orderProperties(returnProperties, orderValues)
+	return
+}
+
+func orderProperties(properties []property.Property, orderValues []int64) (returnProperties []property.Property, returnErr error) {
+	if len(properties) != len(orderValues) {
+		returnErr = errors.New("properties do not have matching order values")
+		return
+	}
+	returnProperties = make([]property.Property, len(properties))
+	for index, orderValue := range orderValues {
+		if returnProperties[orderValue].ID != 0 {
+			returnErr = errors.Errorf("order value %v was used more than once", orderValue)
+			return
+		}
+		returnProperties[orderValue] = properties[index]
+	}
+	return
+}
+
+// ReplacePageProperties replaces the current page's properties with the new properties.
+func (s PageStore) ReplacePageProperties(pageGUID string, pageProperties []property.Property) error {
+	if pageGUID == "" {
+		return errors.New("must provide pageGUID to replace the page properties")
+	}
+	genericWhereClause := wrapsql.WhereClause{
+		Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+			{LeftSide: "Page.guid", Operator: "= ?"},
+		},
+	}
+	query := wrapsql.DeleteQuery{
+		FromTable: "PagePropertyOrder",
+		JoinClauses: []wrapsql.JoinClause{
+			{JoinTable: "Page", On: wrapsql.OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyOrder.Page_ID"}},
+		},
+		WhereClause: genericWhereClause,
+	}
+	err := wrapsql.ExecDelete(s.db, query, pageGUID)
+	if err != nil {
+		return errors.Wrap(err, "unable to delete from PagePropertyOrder")
+	}
+	query = wrapsql.DeleteQuery{
+		FromTable: "PagePropertyNumber",
+		JoinClauses: []wrapsql.JoinClause{
+			{JoinTable: "Page", On: wrapsql.OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyNumber.Page_ID"}},
+		},
+		WhereClause: genericWhereClause,
+	}
+	err = wrapsql.ExecDelete(s.db, query, pageGUID)
+	if err != nil {
+		return errors.Wrap(err, "unable to delete from PagePropertyNumber")
+	}
+	query = wrapsql.DeleteQuery{
+		FromTable: "PagePropertyString",
+		JoinClauses: []wrapsql.JoinClause{
+			{JoinTable: "Page", On: wrapsql.OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyString.Page_ID"}},
+		},
+		WhereClause: genericWhereClause,
+	}
+	err = wrapsql.ExecDelete(s.db, query, pageGUID)
+	if err != nil {
+		return errors.Wrap(err, "unable to delete from PagePropertyString")
+	}
+	return nil
 }

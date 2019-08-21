@@ -28,10 +28,10 @@ func GetSingleRow(guid string, rows *sql.Rows, queryErr error, columns ...interf
 }
 
 // ExecSingleInsert executes a single INSERT command and returns the lastInsertID
-func ExecSingleInsert(db *sql.DB, iq InsertQuery) (lastInsertID int64, err error) {
+func ExecSingleInsert(db *sql.DB, query InsertQuery) (lastInsertID int64, err error) {
 	var statement *sql.Stmt
 	var result sql.Result
-	queryString, orderedValues := GetInsertString(iq)
+	queryString, orderedValues := GetInsertString(query)
 	statement, err = db.Prepare(queryString)
 	if err != nil {
 		return
@@ -46,9 +46,22 @@ func ExecSingleInsert(db *sql.DB, iq InsertQuery) (lastInsertID int64, err error
 }
 
 // ExecSingleUpdate executes a single UPDATE command
-func ExecSingleUpdate(db *sql.DB, iq UpdateQuery, whereClauseInjectedValues ...interface{}) (err error) {
+func ExecSingleUpdate(db *sql.DB, query UpdateQuery, whereClauseInjectedValues ...interface{}) (err error) {
 	var statement *sql.Stmt
-	queryString, orderedValues := GetUpdateString(iq, whereClauseInjectedValues...)
+	queryString, orderedValues := GetUpdateString(query, whereClauseInjectedValues...)
+	statement, err = db.Prepare(queryString)
+	if err != nil {
+		return
+	}
+	defer statement.Close()
+	_, err = statement.Exec(orderedValues...)
+	return
+}
+
+// ExecDelete executes a DELETE command
+func ExecDelete(db *sql.DB, query DeleteQuery, whereClauseInjectedValues ...interface{}) (err error) {
+	var statement *sql.Stmt
+	queryString, orderedValues := GetDeleteString(query, whereClauseInjectedValues...)
 	statement, err = db.Prepare(queryString)
 	if err != nil {
 		return
