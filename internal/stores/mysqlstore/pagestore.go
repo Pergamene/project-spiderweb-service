@@ -446,30 +446,29 @@ func (s PageStore) GetPageProperties(pageGUID string) (returnProperties []proper
 
 // ReplacePageProperties replaces the current page's properties with the new properties.
 func (s PageStore) ReplacePageProperties(pageGUID string, pageProperties []property.Property) error {
+	// @TODO: all this needs to be wrapped into a transaction with rollback.
 	if pageGUID == "" {
 		return errors.New("must provide pageGUID to replace the page properties")
 	}
+	pageID, err := s.getPageID(pageGUID)
+	if err != nil {
+		return errors.Wrapf(err, "unable to get Page.ID for guid: %v", pageID)
+	}
 	genericWhereClause := wrapsql.WhereClause{
 		Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
-			{LeftSide: "Page.guid", Operator: "= ?"},
+			{LeftSide: "Page_ID", Operator: "= ?"},
 		},
 	}
 	query := wrapsql.DeleteQuery{
-		FromTable: "PagePropertyOrder",
-		JoinClauses: []wrapsql.JoinClause{
-			{JoinTable: "Page", On: wrapsql.OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyOrder.Page_ID"}},
-		},
+		FromTable:   "PagePropertyOrder",
 		WhereClause: genericWhereClause,
 	}
-	err := wrapsql.ExecDelete(s.db, query, pageGUID)
+	err = wrapsql.ExecDelete(s.db, query, pageGUID)
 	if err != nil {
 		return errors.Wrap(err, "unable to delete from PagePropertyOrder")
 	}
 	query = wrapsql.DeleteQuery{
-		FromTable: "PagePropertyNumber",
-		JoinClauses: []wrapsql.JoinClause{
-			{JoinTable: "Page", On: wrapsql.OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyNumber.Page_ID"}},
-		},
+		FromTable:   "PagePropertyNumber",
 		WhereClause: genericWhereClause,
 	}
 	err = wrapsql.ExecDelete(s.db, query, pageGUID)
@@ -477,15 +476,26 @@ func (s PageStore) ReplacePageProperties(pageGUID string, pageProperties []prope
 		return errors.Wrap(err, "unable to delete from PagePropertyNumber")
 	}
 	query = wrapsql.DeleteQuery{
-		FromTable: "PagePropertyString",
-		JoinClauses: []wrapsql.JoinClause{
-			{JoinTable: "Page", On: wrapsql.OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyString.Page_ID"}},
-		},
+		FromTable:   "PagePropertyString",
 		WhereClause: genericWhereClause,
 	}
 	err = wrapsql.ExecDelete(s.db, query, pageGUID)
 	if err != nil {
 		return errors.Wrap(err, "unable to delete from PagePropertyString")
 	}
+	// @TODO: 1. get the list of propertyIDs (you'll need to anyway to validate that the keys are valid)
+	// 2. add the propertyIDs to the list of properties[X].ID.
+	// 3. create batch insert helper
+	// 4. batch insert into PagePropertyOrder table, ex:
+	batchQuery := wrapsql.BatchInsertQuery{
+		IntoTable: "PagePropertyOrder",
+	}
+	for i, pageProperty := range pageProperties {
+		batchQuery.BatchInjectedValues["Page_ID"] = append(batchQuery.BatchInjectedValues["Page_ID"], pageID)
+		batchQuery.BatchInjectedValues["Property_ID"] = append(batchQuery.BatchInjectedValues["Property_ID"], pageProperty.ID)
+		batchQuery.BatchInjectedValues["order"] = append(batchQuery.BatchInjectedValues["order"], i)
+	}
+	// 5. separate all properties into their different types as different variables (unordered is fine).  Do this at the top to validate Type and error early.
+	// 6. for each property type, do batch inserts into their respective tables
 	return nil
 }

@@ -6,6 +6,12 @@ import (
 	"strings"
 )
 
+// BatchInsertQuery is used to generate an insert query for multiple value batches.
+type BatchInsertQuery struct {
+	IntoTable           string
+	BatchInjectedValues BatchInjectedValues
+}
+
 // InsertQuery is used to generate an insert query
 type InsertQuery struct {
 	IntoTable      string
@@ -26,8 +32,11 @@ type DeleteQuery struct {
 	WhereClause WhereClause
 }
 
-// InjectedValues are a mapping of key/value pairs where the key is the name of the table column and the value is it's injected value.
+// InjectedValues are a mapping of key/value pairs where the key is the name of the table column and the value is its injected value.
 type InjectedValues map[string]interface{}
+
+// BatchInjectedValues are a mapping of key/value pairs where the key is the name of the table column and the value is a slice of its injected value where each element is part of its indexed value set.
+type BatchInjectedValues map[string][]interface{}
 
 // SelectStatement is used to generate a select statement
 type SelectStatement struct {
