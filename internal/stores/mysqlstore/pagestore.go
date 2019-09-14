@@ -454,6 +454,10 @@ func (s PageStore) ReplacePageProperties(pageGUID string, pageProperties []prope
 	if err != nil {
 		return errors.Wrapf(err, "unable to get Page.ID for guid: %v", pageID)
 	}
+	err = s.setPagePropertyIDs(pageProperties)
+	if err != nil {
+		return errors.Wrap(err, "unable to get Property.ID for the pageProperties")
+	}
 	genericWhereClause := wrapsql.WhereClause{
 		Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
 			{LeftSide: "Page_ID", Operator: "= ?"},
@@ -483,9 +487,6 @@ func (s PageStore) ReplacePageProperties(pageGUID string, pageProperties []prope
 	if err != nil {
 		return errors.Wrap(err, "unable to delete from PagePropertyString")
 	}
-	// @TODO: 1. get the list of propertyIDs (you'll need to anyway to validate that the keys are valid)
-	// 2. add the propertyIDs to the list of properties[X].ID.
-	// 3. create batch insert helper
 	// 4. batch insert into PagePropertyOrder table, ex:
 	batchQuery := wrapsql.BatchInsertQuery{
 		IntoTable: "PagePropertyOrder",
@@ -498,4 +499,68 @@ func (s PageStore) ReplacePageProperties(pageGUID string, pageProperties []prope
 	// 5. separate all properties into their different types as different variables (unordered is fine).  Do this at the top to validate Type and error early.
 	// 6. for each property type, do batch inserts into their respective tables
 	return nil
+}
+
+func (s PageStore) setPagePropertyIDs(pageProperties []property.Property) error {
+	var keys []string
+	for _, p := range pageProperties {
+		keys = append(keys, p.Key)
+	}
+	pps, err := s.getPropertyIDs(keys)
+	if err != nil {
+		return err
+	}
+	for _, pp := range pps {
+		for i := range pageProperties {
+			if pageProperties[i].Key == pp.Key {
+				pageProperties[i].ID = pp.ID
+			}
+		}
+	}
+	for i, p := range pageProperties {
+		if p.ID == 0 {
+			return errors.Errorf("unable to find the ID for the property at %v with key %v", i, p.Key)
+		}
+	}
+	return nil
+}
+
+func (s PageStore) getPropertyIDs(propertyKeys []string) (returnProperties []property.Property, returnErr error) {
+	for i, propertyKey := range propertyKeys {
+		if propertyKey == "" {
+			return nil, errors.Errorf("property key at %v must be non-zero value", i)
+		}
+	}
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"ID", "key"},
+		FromTable: "Property",
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "key", Operator: "IN (" + wrapsql.GetNValueStubList(len(propertyKeys)) + ")"},
+			},
+		},
+	}
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), propertyKeys)
+	if err != nil {
+		returnErr = err
+		return
+	}
+	if err := rows.Err(); err != nil {
+		returnErr = err
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		p := property.Property{}
+		err := rows.Scan(&p.ID, &p.Key)
+		if err != nil {
+			returnErr = err
+			return
+		}
+		returnProperties = append(returnProperties, p)
+	}
+	if len(returnProperties) == 0 {
+		returnProperties = make([]property.Property, 0)
+	}
+	return
 }

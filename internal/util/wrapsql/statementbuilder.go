@@ -170,6 +170,36 @@ func getOrderedInsertValues(ivs InjectedValues) (keys []string, valueStubs []str
 	return
 }
 
+// GetBatchInsertString returns a statement string intended for an INSERT call with batch values.
+func GetBatchInsertString(iq BatchInsertQuery) (string, []interface{}) {
+	keys, batchValueStubs, values := getOrderedBatchInsertValues(iq.BatchInjectedValues)
+	keysString := getEscapedSequence(keys)
+	var batchValueStubsStrings []string
+	for _, valueStubs := range batchValueStubs {
+		batchValueStubsStrings = append(batchValueStubsStrings, "("+strings.Join(valueStubs, ",")+")")
+	}
+	valueStubsString := strings.Join(batchValueStubsStrings, ",")
+	return fmt.Sprintf("INSERT INTO %v (%v) VALUES %v", iq.IntoTable, keysString, valueStubsString), values
+}
+
+func getOrderedBatchInsertValues(ivs BatchInjectedValues) (keys []string, batchValueStubs [][]string, values []interface{}) {
+	for key := range ivs {
+		keys = append(keys, key)
+	}
+	for _, batch := range ivs {
+		var valueStubs []string
+		for range batch {
+			valueStubs = append(valueStubs, "?")
+		}
+		batchValueStubs = append(batchValueStubs, valueStubs)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		values = append(values, ivs[key])
+	}
+	return
+}
+
 // GetUpdateString returns a statement string intended for an UPDATE call.
 func GetUpdateString(iq UpdateQuery, whereClauseInjectedValues ...interface{}) (string, []interface{}) {
 	keys, _, values := getOrderedInsertValues(iq.InjectedValues)
@@ -202,4 +232,19 @@ func GetDeleteString(iq DeleteQuery, whereClauseInjectedValues ...interface{}) (
 		statement = statement + fmt.Sprintf(" WHERE %v", whereString)
 	}
 	return statement, values
+}
+
+// GetNValueStubList returns a string-formed list of "?" of n length.
+// e.g. if n = 3 --> "?,?,?"
+func GetNValueStubList(n int) string {
+	i := 0
+	var stubs []string
+	for {
+		if i >= n {
+			break
+		}
+		stubs = append(stubs, "?")
+		i = i + 1
+	}
+	return strings.Join(stubs, ",")
 }
