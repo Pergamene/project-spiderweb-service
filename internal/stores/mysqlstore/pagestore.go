@@ -243,7 +243,7 @@ func (s PageStore) GetPages(userID, thisBatchID string, limit int) (pages []page
 		return
 	}
 	var err error
-	thisPageID := 0
+	thisPageID := int64(0)
 	if thisBatchID != "" {
 		thisPageID, err = s.getPageID(thisBatchID)
 		if err != nil {
@@ -337,7 +337,7 @@ func (s PageStore) getTotalPages(userID string) (int, error) {
 	return total, nil
 }
 
-func (s PageStore) getPageID(guid string) (int, error) {
+func (s PageStore) getPageID(guid string) (int64, error) {
 	if guid == "" {
 		return -1, errors.New("must provide guid to get the page id")
 	}
@@ -352,7 +352,7 @@ func (s PageStore) getPageID(guid string) (int, error) {
 		Limit: 1,
 	}
 	rows, err := s.db.Query(wrapsql.GetSelectString(statement), guid)
-	var pageID int
+	var pageID int64
 	err = wrapsql.GetSingleRow(guid, rows, err, &pageID)
 	return pageID, err
 }
@@ -458,6 +458,89 @@ func (s PageStore) ReplacePageProperties(pageGUID string, pageProperties []prope
 	if err != nil {
 		return errors.Wrap(err, "unable to get Property.ID for the pageProperties")
 	}
+	err = s.deletePageProperties(pageID)
+	if err != nil {
+		return errors.Wrap(err, "unable to delete page properties")
+	}
+	err = s.addPagePropertyOrders(pageID, pageProperties)
+	if err != nil {
+		return errors.Wrap(err, "unable to add page properties orders")
+	}
+	err = s.addTypedPageProperties(pageID, pageProperties, property.TypeNumber)
+	if err != nil {
+		return errors.Wrap(err, "unable to add number type page properties")
+	}
+	err = s.addTypedPageProperties(pageID, pageProperties, property.TypeString)
+	if err != nil {
+		return errors.Wrap(err, "unable to add string type page properties")
+	}
+	return nil
+}
+
+func (s PageStore) addPagePropertyOrders(pageID int64, pageProperties []property.Property) error {
+	query := wrapsql.BatchInsertQuery{
+		IntoTable: "PagePropertyOrder",
+	}
+	for i, pageProperty := range pageProperties {
+		query.BatchInjectedValues["Page_ID"] = append(query.BatchInjectedValues["Page_ID"], pageID)
+		query.BatchInjectedValues["Property_ID"] = append(query.BatchInjectedValues["Property_ID"], pageProperty.ID)
+		query.BatchInjectedValues["order"] = append(query.BatchInjectedValues["order"], i)
+	}
+	err := wrapsql.ExecBatchInsert(s.db, query)
+	if err != nil {
+		return errors.Wrap(err, "unable to insert page property order")
+	}
+	return nil
+}
+
+func (s PageStore) addTypedPageProperties(pageID int64, pageProperties []property.Property, propertyType property.Type) error {
+	scopedPageProperties := getTypedProperties(pageProperties, propertyType)
+	if len(scopedPageProperties) == 0 {
+		return nil
+	}
+	t := time.Now()
+	tableName := ""
+	switch propertyType {
+	case property.TypeNumber:
+		tableName = "PagePropertyNumber"
+	case property.TypeString:
+		tableName = "PagePropertyString"
+	default:
+		return errors.Errorf("unsupported page property type for instert: %v", propertyType)
+	}
+	query := wrapsql.BatchInsertQuery{
+		IntoTable: tableName,
+	}
+	for i, pageProperty := range scopedPageProperties {
+		query.BatchInjectedValues["Page_ID"] = append(query.BatchInjectedValues["Page_ID"], pageID)
+		query.BatchInjectedValues["Property_ID"] = append(query.BatchInjectedValues["Property_ID"], pageProperty.ID)
+		// @TODO: I don't actually think we need a Version_ID anywhere in the schema.  Since upping the version of a page will create a new Page.ID (even if it's the same Page.guid)
+		// then properties will be automatically linked to that new version because of the new Page.ID
+		query.BatchInjectedValues["Version_ID"] = append(query.BatchInjectedValues["Version_ID"], 0)
+		query.BatchInjectedValues["value"] = append(query.BatchInjectedValues["value"], pageProperty.Value)
+		// @TODO: figure out permission
+		query.BatchInjectedValues["permission"] = append(query.BatchInjectedValues["permission"], "PR")
+		query.BatchInjectedValues["createdAt"] = append(query.BatchInjectedValues["createdAt"], t)
+		query.BatchInjectedValues["updatedAt"] = append(query.BatchInjectedValues["updatedAt"], t)
+	}
+	err := wrapsql.ExecBatchInsert(s.db, query)
+	if err != nil {
+		return errors.Wrap(err, "unable to insert page property order")
+	}
+	return nil
+}
+
+func getTypedProperties(properties []property.Property, propertyType property.Type) (returnProperties []property.Property) {
+	returnProperties = make([]property.Property, 0)
+	for _, p := range properties {
+		if p.Type == propertyType {
+			returnProperties = append(returnProperties, p)
+		}
+	}
+	return
+}
+
+func (s PageStore) deletePageProperties(pageID int64) error {
 	genericWhereClause := wrapsql.WhereClause{
 		Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
 			{LeftSide: "Page_ID", Operator: "= ?"},
@@ -467,7 +550,7 @@ func (s PageStore) ReplacePageProperties(pageGUID string, pageProperties []prope
 		FromTable:   "PagePropertyOrder",
 		WhereClause: genericWhereClause,
 	}
-	err = wrapsql.ExecDelete(s.db, query, pageGUID)
+	err := wrapsql.ExecDelete(s.db, query, pageID)
 	if err != nil {
 		return errors.Wrap(err, "unable to delete from PagePropertyOrder")
 	}
@@ -475,7 +558,7 @@ func (s PageStore) ReplacePageProperties(pageGUID string, pageProperties []prope
 		FromTable:   "PagePropertyNumber",
 		WhereClause: genericWhereClause,
 	}
-	err = wrapsql.ExecDelete(s.db, query, pageGUID)
+	err = wrapsql.ExecDelete(s.db, query, pageID)
 	if err != nil {
 		return errors.Wrap(err, "unable to delete from PagePropertyNumber")
 	}
@@ -483,21 +566,10 @@ func (s PageStore) ReplacePageProperties(pageGUID string, pageProperties []prope
 		FromTable:   "PagePropertyString",
 		WhereClause: genericWhereClause,
 	}
-	err = wrapsql.ExecDelete(s.db, query, pageGUID)
+	err = wrapsql.ExecDelete(s.db, query, pageID)
 	if err != nil {
 		return errors.Wrap(err, "unable to delete from PagePropertyString")
 	}
-	// 4. batch insert into PagePropertyOrder table, ex:
-	batchQuery := wrapsql.BatchInsertQuery{
-		IntoTable: "PagePropertyOrder",
-	}
-	for i, pageProperty := range pageProperties {
-		batchQuery.BatchInjectedValues["Page_ID"] = append(batchQuery.BatchInjectedValues["Page_ID"], pageID)
-		batchQuery.BatchInjectedValues["Property_ID"] = append(batchQuery.BatchInjectedValues["Property_ID"], pageProperty.ID)
-		batchQuery.BatchInjectedValues["order"] = append(batchQuery.BatchInjectedValues["order"], i)
-	}
-	// 5. separate all properties into their different types as different variables (unordered is fine).  Do this at the top to validate Type and error early.
-	// 6. for each property type, do batch inserts into their respective tables
 	return nil
 }
 

@@ -45,6 +45,22 @@ func ExecSingleInsert(db *sql.DB, query InsertQuery) (lastInsertID int64, err er
 	return
 }
 
+// ExecBatchInsert executes a batch INSERT command
+func ExecBatchInsert(db *sql.DB, query BatchInsertQuery) (err error) {
+	var statement *sql.Stmt
+	queryString, orderedValues := GetBatchInsertString(query)
+	statement, err = db.Prepare(queryString)
+	if err != nil {
+		return
+	}
+	defer statement.Close()
+	_, err = statement.Exec(orderedValues...)
+	if err != nil {
+		return
+	}
+	return
+}
+
 // ExecSingleUpdate executes a single UPDATE command
 func ExecSingleUpdate(db *sql.DB, query UpdateQuery, whereClauseInjectedValues ...interface{}) (err error) {
 	var statement *sql.Stmt
