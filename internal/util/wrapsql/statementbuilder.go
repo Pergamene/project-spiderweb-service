@@ -195,7 +195,9 @@ func getOrderedBatchInsertValues(ivs BatchInjectedValues) (keys []string, batchV
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		values = append(values, ivs[key])
+		for _, value := range ivs[key] {
+			values = append(values, value)
+		}
 	}
 	return
 }

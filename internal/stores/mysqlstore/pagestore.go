@@ -511,7 +511,7 @@ func (s PageStore) addTypedPageProperties(pageID int64, pageProperties []propert
 	query := wrapsql.BatchInsertQuery{
 		IntoTable: tableName,
 	}
-	for i, pageProperty := range scopedPageProperties {
+	for _, pageProperty := range scopedPageProperties {
 		query.BatchInjectedValues["Page_ID"] = append(query.BatchInjectedValues["Page_ID"], pageID)
 		query.BatchInjectedValues["Property_ID"] = append(query.BatchInjectedValues["Property_ID"], pageProperty.ID)
 		// @TODO: I don't actually think we need a Version_ID anywhere in the schema.  Since upping the version of a page will create a new Page.ID (even if it's the same Page.guid)

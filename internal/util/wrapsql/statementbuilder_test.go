@@ -84,6 +84,36 @@ func TestGetInsertString(t *testing.T) {
 	}
 }
 
+func TestGetBatchInsertString(t *testing.T) {
+	cases := []struct {
+		name                  string
+		paramBatchInsertQuery BatchInsertQuery
+		returnQuery           string
+		returnValues          []interface{}
+	}{
+		{
+			name: "test 'insert page properties' statement",
+			paramBatchInsertQuery: BatchInsertQuery{
+				IntoTable: "PagePropertyOrder",
+				BatchInjectedValues: BatchInjectedValues{
+					"Page_ID":     []interface{}{1, 2, 3},
+					"Property_ID": []interface{}{4, 5, 6},
+					"order":       []interface{}{7, 8, 9},
+				},
+			},
+			returnQuery:  "INSERT INTO PagePropertyOrder (`Page_ID`,`Property_ID`,`order`) VALUES (?,?,?),(?,?,?),(?,?,?)",
+			returnValues: []interface{}{1, 2, 3, 4, 5, 6, 7, 8, 9},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			query, valueStubs := GetBatchInsertString(tc.paramBatchInsertQuery)
+			require.Equal(t, tc.returnQuery, query)
+			require.Equal(t, tc.returnValues, valueStubs)
+		})
+	}
+}
+
 func TestGetUpdateString(t *testing.T) {
 	cases := []struct {
 		name                           string

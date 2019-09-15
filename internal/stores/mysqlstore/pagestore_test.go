@@ -7,6 +7,7 @@ import (
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/pagetemplate"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/permission"
+	"github.com/Pergamene/project-spiderweb-service/internal/models/property"
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/storeerror"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
@@ -567,6 +568,69 @@ func TestGetUniquePageGUID(t *testing.T) {
 			}
 			require.Equal(t, tc.returnPageGUIDLength, len(result))
 			require.Equal(t, tc.returnPageGUIDPrefix, result[:len(tc.returnPageGUIDPrefix)])
+		})
+	}
+}
+
+func TestGetPageProperties(t *testing.T) {
+	cases := []struct {
+		name                   string
+		shouldReplaceDBWithNil bool
+		preTestQueries         []string
+		paramPageGUID          string
+		returnProperties       []property.Property
+		returnErr              error
+	}{
+		{
+			name: "happy path",
+			preTestQueries: []string{
+				"INSERT INTO Version (`guid`, `name`, `createdAt`, `updatedAt`) VALUES( \"VR_1\", \"TEST_VERSION\", NOW(), NOW())",
+				"INSERT INTO PageTemplate (`Version_ID`, `guid`, `name`, `hasProperties`, `hasDetails`, `hasRelations`, `createdAt`, `updatedAt`) VALUES(1, \"PGT_1\", \"TEST_TEMPLATE\", true, true, true, NOW(), NOW())",
+				"INSERT INTO User (`guid`, `email`, `createdAt`, `updatedAt`) VALUES( \"UR_1\", \"bob@test.com\", NOW(), NOW())",
+				"INSERT INTO Page (`Version_ID`, `PageTemplate_ID`, `guid`, `title`, `summary`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, \"PG_1\", \"test title\", \"\", \"PR\", NOW(), NOW() )",
+				"INSERT INTO PageOwner (`Page_ID`, `User_ID`, `isOwner`) VALUES( 1, 1, true)",
+				"INSERT INTO Property (`Version_ID`, `type`, `key`, `createdAt`, `updatedAt`) VALUES( 1, \"NU\", \"population\", NOW(), NOW())",
+				"INSERT INTO Property (`Version_ID`, `type`, `key`, `createdAt`, `updatedAt`) VALUES( 1, \"ST\", \"banner\", NOW(), NOW())",
+				"INSERT INTO Property (`Version_ID`, `type`, `key`, `createdAt`, `updatedAt`) VALUES( 1, \"ST\", \"color\", NOW(), NOW())",
+				"INSERT INTO Property (`Version_ID`, `type`, `key`, `createdAt`, `updatedAt`) VALUES( 1, \"ST\", \"symbol\", NOW(), NOW())",
+				"INSERT INTO PagePropertyNumber (`Page_ID`, `Property_ID`, `Version_ID`, `value`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 1, 1, 100000, \"PR\", NOW(), NOW())",
+				"INSERT INTO PagePropertyString (`Page_ID`, `Property_ID`, `Version_ID`, `value`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 2, 1, \"lion heads\", \"PR\", NOW(), NOW())",
+				"INSERT INTO PagePropertyString (`Page_ID`, `Property_ID`, `Version_ID`, `value`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 3, 1, \"blue\", \"PR\", NOW(), NOW())",
+				"INSERT INTO PagePropertyString (`Page_ID`, `Property_ID`, `Version_ID`, `value`, `permission`, `createdAt`, `updatedAt`) VALUES( 1, 4, 1, \"lion\", \"PR\", NOW(), NOW())",
+				"INSERT INTO PagePropertyOrder (`Page_ID`, `Property_ID`, `order`) VALUES( 1, 1, 1)",
+				"INSERT INTO PagePropertyOrder (`Page_ID`, `Property_ID`, `order`) VALUES( 1, 2, 2)",
+				"INSERT INTO PagePropertyOrder (`Page_ID`, `Property_ID`, `order`) VALUES( 1, 3, 0)",
+				"INSERT INTO PagePropertyOrder (`Page_ID`, `Property_ID`, `order`) VALUES( 1, 4, 3)",
+			},
+			paramPageGUID: "PG_1",
+			returnProperties: []property.Property{
+				property.Property{
+					ID:    1,
+					Key:   "test",
+					Type:  property.TypeString,
+					Value: "test",
+				},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			pageStore := PageStore{
+				db: mysqldb,
+			}
+			err := testPageStoreClearAllTables(pageStore.db)
+			require.NoError(t, err)
+			err = execPreTestQueries(pageStore.db, tc.preTestQueries)
+			require.NoError(t, err)
+			if tc.shouldReplaceDBWithNil {
+				pageStore.db = nil
+			}
+			pageProperties, err := pageStore.GetPageProperties(tc.paramPageGUID)
+			errExpected := testutils.TestErrorAgainstCase(t, err, tc.returnErr)
+			if errExpected {
+				return
+			}
+			require.Equal(t, tc.returnProperties, pageProperties)
 		})
 	}
 }
