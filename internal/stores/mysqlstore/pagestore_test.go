@@ -604,12 +604,10 @@ func TestGetPageProperties(t *testing.T) {
 			},
 			paramPageGUID: "PG_1",
 			returnProperties: []property.Property{
-				property.Property{
-					ID:    1,
-					Key:   "test",
-					Type:  property.TypeString,
-					Value: "test",
-				},
+				property.Property{ID: 3, Key: "color", Type: property.TypeString, Value: "blue"},
+				property.Property{ID: 1, Key: "population", Type: property.TypeNumber, Value: float64(100000)},
+				property.Property{ID: 2, Key: "banner", Type: property.TypeString, Value: "lion heads"},
+				property.Property{ID: 4, Key: "symbol", Type: property.TypeString, Value: "lion"},
 			},
 		},
 	}

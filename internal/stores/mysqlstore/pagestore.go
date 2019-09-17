@@ -386,16 +386,55 @@ func (s PageStore) GetPageProperties(pageGUID string) (returnProperties []proper
 		returnErr = errors.New("must provide pageGUID to get the page properties")
 		return
 	}
+	stringPP, stringPPOrder, err := s.getStringTypePageProperties(pageGUID)
+	if err != nil {
+		returnErr = errors.Wrap(err, "unable to get string type page properties")
+	}
+	numberPP, numberPPOrder, err := s.getNumberTypePageProperties(pageGUID)
+	if err != nil {
+		returnErr = errors.Wrap(err, "unable to get number type page properties")
+	}
+	stringIndex := 0
+	numberIndex := 0
+	for {
+		if stringIndex >= len(stringPPOrder) || numberIndex >= len(numberPPOrder) {
+			if stringIndex < len(stringPPOrder) {
+				returnProperties = append(returnProperties, stringPP[stringIndex])
+				stringIndex = stringIndex + 1
+			} else if numberIndex < len(numberPPOrder) {
+				returnProperties = append(returnProperties, numberPP[numberIndex])
+				numberIndex = numberIndex + 1
+			} else {
+				break
+			}
+		} else if stringPPOrder[stringIndex] < numberPPOrder[numberIndex] {
+			returnProperties = append(returnProperties, stringPP[stringIndex])
+			stringIndex = stringIndex + 1
+		} else {
+			returnProperties = append(returnProperties, numberPP[numberIndex])
+			numberIndex = numberIndex + 1
+		}
+	}
+	return
+}
+
+func (s PageStore) getStringTypePageProperties(pageGUID string) (returnProperties []property.Property, returnPropertiesOrder []int64, returnErr error) {
 	statement := wrapsql.SelectStatement{
-		Selectors: []string{"Property.ID", "Property.type", "Property.key", "PagePropertyString.value", "PagePropertyNumber.value", "PagePropertyOrder.order"},
+		Selectors: []string{"Property.ID", "Property.type", "Property.key", "PagePropertyString.value", "PagePropertyOrder.order"},
 		FromTable: "Page",
 		JoinClauses: []wrapsql.JoinClause{
 			{JoinTable: "PagePropertyString", On: wrapsql.OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyString.Page_ID"}},
-			{JoinTable: "PagePropertyNumber", On: wrapsql.OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyNumber.Page_ID"}},
 			{JoinTable: "Property", On: wrapsql.OnClause{LeftSide: "PagePropertyString.Property_ID", RightSide: "Property.ID"}},
-			{JoinTable: "Property", On: wrapsql.OnClause{LeftSide: "PagePropertyNumber.Property_ID", RightSide: "Property.ID"}},
-			{JoinTable: "PagePropertyOrder", On: wrapsql.OnClause{LeftSide: "PagePropertyOrder.Page_ID", RightSide: "Page.ID"}},
-			{JoinTable: "PagePropertyOrder", On: wrapsql.OnClause{LeftSide: "PagePropertyOrder.Property_ID", RightSide: "Property.ID"}},
+			{
+				JoinTable: "PagePropertyOrder",
+				On: wrapsql.OnClause{
+					Operator: "AND",
+					OnOperations: []wrapsql.OnClause{
+						{LeftSide: "PagePropertyOrder.Page_ID", RightSide: "Page.ID"},
+						{LeftSide: "PagePropertyOrder.Property_ID", RightSide: "Property.ID"},
+					},
+				},
+			},
 		},
 		WhereClause: wrapsql.WhereClause{
 			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
@@ -403,6 +442,67 @@ func (s PageStore) GetPageProperties(pageGUID string) (returnProperties []proper
 				{LeftSide: "Page.deletedAt", Operator: "IS NULL"},
 				{LeftSide: "Property.deletedAt", Operator: "IS NULL"},
 				{LeftSide: "PagePropertyString.deletedAt", Operator: "IS NULL"},
+			},
+		},
+		OrderClause: wrapsql.OrderClause{
+			Column: "PagePropertyOrder.order",
+			SortBy: "ASC",
+		},
+	}
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), pageGUID)
+	if err != nil {
+		returnErr = err
+		return
+	}
+	if err := rows.Err(); err != nil {
+		returnErr = err
+		return
+	}
+	returnProperties = make([]property.Property, 0)
+	returnPropertiesOrder = make([]int64, 0)
+	defer rows.Close()
+	for rows.Next() {
+		var orderValue int64
+		dbp := property.DBProperty{}
+		err := rows.Scan(&dbp.ID, &dbp.Type, &dbp.Key, &dbp.StringValue, &orderValue)
+		if err != nil {
+			returnErr = err
+			return
+		}
+		p, err := dbp.GetProperty()
+		if err != nil {
+			returnErr = err
+			return
+		}
+		returnProperties = append(returnProperties, p)
+		returnPropertiesOrder = append(returnPropertiesOrder, orderValue)
+	}
+	return
+}
+
+func (s PageStore) getNumberTypePageProperties(pageGUID string) (returnProperties []property.Property, returnPropertiesOrder []int64, returnErr error) {
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"Property.ID", "Property.type", "Property.key", "PagePropertyNumber.value", "PagePropertyOrder.order"},
+		FromTable: "Page",
+		JoinClauses: []wrapsql.JoinClause{
+			{JoinTable: "PagePropertyNumber", On: wrapsql.OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyNumber.Page_ID"}},
+			{JoinTable: "Property", On: wrapsql.OnClause{LeftSide: "PagePropertyNumber.Property_ID", RightSide: "Property.ID"}},
+			{
+				JoinTable: "PagePropertyOrder",
+				On: wrapsql.OnClause{
+					Operator: "AND",
+					OnOperations: []wrapsql.OnClause{
+						{LeftSide: "PagePropertyOrder.Page_ID", RightSide: "Page.ID"},
+						{LeftSide: "PagePropertyOrder.Property_ID", RightSide: "Property.ID"},
+					},
+				},
+			},
+		},
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "Page.guid", Operator: "= ?"},
+				{LeftSide: "Page.deletedAt", Operator: "IS NULL"},
+				{LeftSide: "Property.deletedAt", Operator: "IS NULL"},
 				{LeftSide: "PagePropertyNumber.deletedAt", Operator: "IS NULL"},
 			},
 		},
@@ -420,12 +520,13 @@ func (s PageStore) GetPageProperties(pageGUID string) (returnProperties []proper
 		returnErr = err
 		return
 	}
-	var orderValues []int64
+	returnProperties = make([]property.Property, 0)
+	returnPropertiesOrder = make([]int64, 0)
 	defer rows.Close()
 	for rows.Next() {
 		var orderValue int64
 		dbp := property.DBProperty{}
-		err := rows.Scan(&dbp.ID, &dbp.Type, &dbp.Key, &dbp.StringValue, &dbp.NumberValue, &orderValue)
+		err := rows.Scan(&dbp.ID, &dbp.Type, &dbp.Key, &dbp.NumberValue, &orderValue)
 		if err != nil {
 			returnErr = err
 			return
@@ -436,10 +537,7 @@ func (s PageStore) GetPageProperties(pageGUID string) (returnProperties []proper
 			return
 		}
 		returnProperties = append(returnProperties, p)
-		orderValues = append(orderValues, orderValue)
-	}
-	if len(returnProperties) == 0 {
-		returnProperties = make([]property.Property, 0)
+		returnPropertiesOrder = append(returnPropertiesOrder, orderValue)
 	}
 	return
 }

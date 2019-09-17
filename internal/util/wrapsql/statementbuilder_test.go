@@ -39,6 +39,51 @@ func TestGetSelectString(t *testing.T) {
 			},
 			returnStatement: "SELECT `Page`.`ID`,`Version`.`guid`,`PageTemplate`.`guid`,`Page`.`title`,`Page`.`summary`,`Page`.`permission`,`Page`.`createdAt`,`Page`.`updatedAt` FROM Page JOIN Version ON `Page`.`Version_ID` = `Version`.`ID` JOIN PageTemplate ON `Page`.`PageTemplate_ID` = `PageTemplate`.`ID` WHERE `guid` = ? AND `deletedAt` IS NULL LIMIT 1",
 		},
+		{
+			name: "test 'get page' properties statement",
+			paramSelectStatement: SelectStatement{
+				Selectors: []string{"Property.ID", "Property.type", "Property.key", "PagePropertyString.value", "PagePropertyNumber.value", "PagePropertyOrder.order"},
+				FromTable: "Page",
+				JoinClauses: []JoinClause{
+					{JoinTable: "PagePropertyString", On: OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyString.Page_ID"}},
+					{JoinTable: "PagePropertyNumber", On: OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyNumber.Page_ID"}},
+					{
+						JoinTable: "Property",
+						On: OnClause{
+							Operator: "AND",
+							OnOperations: []OnClause{
+								{LeftSide: "PagePropertyString.Property_ID", RightSide: "Property.ID"},
+								{LeftSide: "PagePropertyNumber.Property_ID", RightSide: "Property.ID"},
+							},
+						},
+					},
+					{
+						JoinTable: "PagePropertyOrder",
+						On: OnClause{
+							Operator: "AND",
+							OnOperations: []OnClause{
+								{LeftSide: "PagePropertyOrder.Page_ID", RightSide: "Page.ID"},
+								{LeftSide: "PagePropertyOrder.Property_ID", RightSide: "Property.ID"},
+							},
+						},
+					},
+				},
+				WhereClause: WhereClause{
+					Operator: "AND", WhereOperations: []WhereOperation{
+						{LeftSide: "Page.guid", Operator: "= ?"},
+						{LeftSide: "Page.deletedAt", Operator: "IS NULL"},
+						{LeftSide: "Property.deletedAt", Operator: "IS NULL"},
+						{LeftSide: "PagePropertyString.deletedAt", Operator: "IS NULL"},
+						{LeftSide: "PagePropertyNumber.deletedAt", Operator: "IS NULL"},
+					},
+				},
+				OrderClause: OrderClause{
+					Column: "PagePropertyOrder.order",
+					SortBy: "ASC",
+				},
+			},
+			returnStatement: "SELECT `Property`.`ID`,`Property`.`type`,`Property`.`key`,`PagePropertyString`.`value`,`PagePropertyNumber`.`value`,`PagePropertyOrder`.`order` FROM Page JOIN PagePropertyString ON `Page`.`ID` = `PagePropertyString`.`Page_ID` JOIN PagePropertyNumber ON `Page`.`ID` = `PagePropertyNumber`.`Page_ID` JOIN Property ON `PagePropertyString`.`Property_ID` = `Property`.`ID` AND `PagePropertyNumber`.`Property_ID` = `Property`.`ID` JOIN PagePropertyOrder ON `PagePropertyOrder`.`Page_ID` = `Page`.`ID` AND `PagePropertyOrder`.`Property_ID` = `Property`.`ID` WHERE `Page`.`guid` = ? AND `Page`.`deletedAt` IS NULL AND `Property`.`deletedAt` IS NULL AND `PagePropertyString`.`deletedAt` IS NULL AND `PagePropertyNumber`.`deletedAt` IS NULL ORDER BY `PagePropertyOrder`.`order` ASC",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

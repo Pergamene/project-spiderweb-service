@@ -10,7 +10,8 @@ type Property struct {
 	Value interface{} `json:"value"`
 }
 
-// DBProperty is the Property struct as it comes out of the DB
+// DBProperty is the Property struct as it comes out of the DB.  This ensures that
+// the property's value is appropriately cast into the Property.Value interface.
 type DBProperty struct {
 	ID          int64
 	Key         string

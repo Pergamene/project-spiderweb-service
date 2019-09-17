@@ -55,9 +55,13 @@ type JoinClause struct {
 }
 
 // OnClause is used to generate an ON clause
+// If the OnClause has one "ON X = Y", then use LeftSide RightSide
+// If the OnCalsue is "ON (X = Y) AND | OR (Z = A)", then use Operator and OnOperations
 type OnClause struct {
-	LeftSide  string
-	RightSide string
+	Operator     string // either AND or OR
+	OnOperations []OnClause
+	LeftSide     string
+	RightSide    string
 }
 
 // WhereOperation is used to generate a WHERE operation, such as "`ID` = ?"
@@ -130,7 +134,18 @@ func GetJoinsString(joins []JoinClause) string {
 }
 
 func getJoinString(join JoinClause) string {
-	return fmt.Sprintf("JOIN %v ON %v = %v", join.JoinTable, getEscapedString(join.On.LeftSide), getEscapedString(join.On.RightSide))
+	return fmt.Sprintf("JOIN %v ON %v", join.JoinTable, getOnString(join.On))
+}
+
+func getOnString(on OnClause) string {
+	if on.LeftSide != "" {
+		return fmt.Sprintf("%v = %v", getEscapedString(on.LeftSide), getEscapedString(on.RightSide))
+	}
+	var onOperations []string
+	for _, onOperation := range on.OnOperations {
+		onOperations = append(onOperations, getOnString(onOperation))
+	}
+	return strings.Join(onOperations, " "+on.Operator+" ")
 }
 
 // GetWhereString returns a string for the WHERE clause in the query
