@@ -21,7 +21,6 @@ type CreatePageParams struct {
 
 // CreatePage creates a new page.
 func (s PageService) CreatePage(ctx context.Context, params CreatePageParams) (page.Page, error) {
-	// @TODO:
 	params.Page.GUID = "PG_123456789012"
 	page, err := s.PageStore.CreatePage(params.Page, params.OwnerID)
 	if err != nil {

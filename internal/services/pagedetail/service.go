@@ -5,6 +5,7 @@ import (
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/pagedetail"
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/store"
+	"github.com/pkg/errors"
 )
 
 // PageDetailService is the service for handling page detail-related APIs
@@ -21,10 +22,9 @@ type UpdatePageDetailParams struct {
 
 // UpdatePageDetail Updates a page detail.
 func (s PageDetailService) UpdatePageDetail(ctx context.Context, params UpdatePageDetailParams) error {
-	// @TODO:
-	// err = s.PageDetailStore.UpdatePageDetail(params.Detail)
-	// if err != nil {
-	// 	return errors.Wrapf(err, "failed to update page detail: %+v", params)
-	// }
+	err := s.PageDetailStore.UpdatePageDetail(params.Detail)
+	if err != nil {
+		return errors.Wrapf(err, "failed to update detail: %v", params)
+	}
 	return nil
 }
