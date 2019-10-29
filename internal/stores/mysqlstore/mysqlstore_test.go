@@ -86,6 +86,9 @@ func executeQueries(db *sql.DB, queries []string) error {
 	if db == nil {
 		return nil
 	}
+	if queries == nil {
+		return nil
+	}
 	for _, query := range queries {
 		if query == "" {
 			continue
@@ -143,7 +146,7 @@ func clearTableForTest(db *sql.DB, table string) error {
 	if db == nil {
 		return nil
 	}
-	statement, err := db.Prepare(fmt.Sprintf("DELETE FROM `%v`", table))
+	statement, err := db.Prepare(fmt.Sprintf("TRUNCATE TABLE `%v`", table))
 	if err != nil {
 		return err
 	}

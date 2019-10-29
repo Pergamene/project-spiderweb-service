@@ -13,9 +13,10 @@ import (
 type CreatePageRequest struct {
 	Title                string `json:"title"`
 	Summary              string `json:"summary"`
-	VersionID            int64  `json:"versionId"`
+	VersionID            string `json:"versionId"`
 	PermissionTypeString string `json:"permission"`
 	PermissionType       permission.Type
+	PageTemplateID       string `json:"pageTemplateId"`
 }
 
 // NewCreatePageRequest extracts the CreatePageRequest
@@ -32,8 +33,11 @@ func (request CreatePageRequest) validate() (CreatePageRequest, error) {
 	if request.Title == "" {
 		return request, errors.New("must provide title")
 	}
-	if request.VersionID <= 0 {
+	if request.VersionID == "" {
 		return request, errors.New("must provide versionId")
+	}
+	if request.PageTemplateID == "" {
+		return request, errors.New("must provide pageTemplateId")
 	}
 	permissionType, err := permission.GetPermissionType(request.PermissionTypeString)
 	if err != nil {
@@ -45,9 +49,13 @@ func (request CreatePageRequest) validate() (CreatePageRequest, error) {
 
 // UpdatePageRequest parameters from the UpdatePage call
 type UpdatePageRequest struct {
-	GUID    string
-	Title   string `json:"title"`
-	Summary string `json:"summary"`
+	GUID                 string
+	Title                string `json:"title"`
+	Summary              string `json:"summary"`
+	VersionID            string `json:"versionId"`
+	PermissionTypeString string `json:"permission"`
+	PermissionType       permission.Type
+	PageTemplateID       string `json:"pageTemplateId"`
 }
 
 // NewUpdatePageRequest extracts the UpdatePageRequest
@@ -65,10 +73,27 @@ func (request UpdatePageRequest) validate() (UpdatePageRequest, error) {
 	if request.GUID == "" {
 		return request, errors.New("must provide a page id")
 	}
-	if request.Title == "" {
-		return request, errors.New("a page must retain a title")
+	if request.PermissionTypeString != "" {
+		permissionType, err := permission.GetPermissionType(request.PermissionTypeString)
+		if err != nil {
+			return request, errors.New("permission is not a valid value")
+		}
+		request.PermissionType = permissionType
 	}
 	return request, nil
+}
+
+// GetEntirePageRequest parameters from the GetEntirePage call
+type GetEntirePageRequest struct {
+	GUID string
+}
+
+// NewGetEntirePageRequest extracts the GetEntirePageRequest
+func NewGetEntirePageRequest(r *http.Request, p httprouter.Params) (GetEntirePageRequest, error) {
+	request, err := NewGetPageRequest(r, p)
+	return GetEntirePageRequest{
+		GUID: request.GUID,
+	}, err
 }
 
 // GetPageRequest parameters from the GetPage call
@@ -87,5 +112,40 @@ func (request GetPageRequest) validate() (GetPageRequest, error) {
 	if request.GUID == "" {
 		return request, errors.New("must provide a page id")
 	}
+	return request, nil
+}
+
+// DeletePageRequest parameters from the DeletePage call
+type DeletePageRequest struct {
+	GUID string
+}
+
+// NewDeletePageRequest extracts the DeletePageRequest
+func NewDeletePageRequest(r *http.Request, p httprouter.Params) (DeletePageRequest, error) {
+	var request DeletePageRequest
+	request.GUID = p.ByName(PageIDRouteKey)
+	return request.validate()
+}
+
+func (request DeletePageRequest) validate() (DeletePageRequest, error) {
+	if request.GUID == "" {
+		return request, errors.New("must provide a page id")
+	}
+	return request, nil
+}
+
+// GetPagesRequest parameters from the GetPages call
+type GetPagesRequest struct {
+	NextBatchID string
+}
+
+// NewGetPagesRequest extracts the GetPagesRequest
+func NewGetPagesRequest(r *http.Request, p httprouter.Params) (GetPagesRequest, error) {
+	var request GetPagesRequest
+	request.NextBatchID = r.URL.Query().Get("nextBatchId")
+	return request.validate()
+}
+
+func (request GetPagesRequest) validate() (GetPagesRequest, error) {
 	return request, nil
 }
