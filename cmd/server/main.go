@@ -10,8 +10,10 @@ import (
 	"github.com/Pergamene/project-spiderweb-service/internal/api"
 	healthcheckhandler "github.com/Pergamene/project-spiderweb-service/internal/api/handlers/healthcheck"
 	pagehandler "github.com/Pergamene/project-spiderweb-service/internal/api/handlers/page"
+	pagedetailhandler "github.com/Pergamene/project-spiderweb-service/internal/api/handlers/pagedetail"
 	healthcheckservice "github.com/Pergamene/project-spiderweb-service/internal/services/healthcheck"
 	pageservice "github.com/Pergamene/project-spiderweb-service/internal/services/page"
+	pagedetailservice "github.com/Pergamene/project-spiderweb-service/internal/services/pagedetail"
 	"github.com/Pergamene/project-spiderweb-service/internal/stores/mysqlstore"
 	"github.com/Pergamene/project-spiderweb-service/internal/util/env"
 	"github.com/rs/cors"
@@ -97,11 +99,15 @@ func setupHandler(apiPath, staticPath, datacenter string, mysqldb *sql.DB) (http
 		VersionStore:      versionStore,
 		UserStore:         userStore,
 	}
+	pageDetailService := pagedetailservice.PageDetailService{
+		PageDetailStore: pageDetailStore,
+	}
 	healthcheckService := healthcheckservice.HealthcheckService{
 		HealthcheckStore: healthcheckStore,
 	}
 	var routerHandlers []api.RouterHandler
 	routerHandlers = append(routerHandlers, pagehandler.PageRouterHandlers(apiPath, pageService)...)
+	routerHandlers = append(routerHandlers, pagedetailhandler.PageDetailRouterHandlers(apiPath, pageDetailService)...)
 	routerHandlers = append(routerHandlers, healthcheckhandler.HealthcheckRouterHandlers(apiPath, healthcheckService)...)
 	router := api.NewRouter(apiPath, staticPath, routerHandlers)
 	authN, authZ, err := getAuths(apiPath, datacenter)
