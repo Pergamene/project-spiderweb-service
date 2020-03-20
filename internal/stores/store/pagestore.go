@@ -1,6 +1,9 @@
 package store
 
-import "github.com/Pergamene/project-spiderweb-service/internal/models/page"
+import (
+	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
+	"github.com/Pergamene/project-spiderweb-service/internal/models/property"
+)
 
 // PageStore defines the required functionality for any associated store.
 type PageStore interface {
@@ -12,4 +15,6 @@ type PageStore interface {
 	GetPage(pageGUID string) (page.Page, error)
 	GetPages(userID string, nextBatchID string, limit int) ([]page.Page, int, string, error)
 	RemovePage(pageGUID string) error
+	GetPageProperties(pageGUID string) ([]property.Property, error)
+	ReplacePageProperties(pageGUID string, pageProperties []property.Property) error
 }

@@ -12,6 +12,7 @@ import (
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/page"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/permission"
+	"github.com/Pergamene/project-spiderweb-service/internal/models/property"
 )
 
 // PageStore is the mysql for pages
@@ -242,7 +243,7 @@ func (s PageStore) GetPages(userID, thisBatchID string, limit int) (pages []page
 		return
 	}
 	var err error
-	thisPageID := 0
+	thisPageID := int64(0)
 	if thisBatchID != "" {
 		thisPageID, err = s.getPageID(thisBatchID)
 		if err != nil {
@@ -336,7 +337,7 @@ func (s PageStore) getTotalPages(userID string) (int, error) {
 	return total, nil
 }
 
-func (s PageStore) getPageID(guid string) (int, error) {
+func (s PageStore) getPageID(guid string) (int64, error) {
 	if guid == "" {
 		return -1, errors.New("must provide guid to get the page id")
 	}
@@ -351,7 +352,7 @@ func (s PageStore) getPageID(guid string) (int, error) {
 		Limit: 1,
 	}
 	rows, err := s.db.Query(wrapsql.GetSelectString(statement), guid)
-	var pageID int
+	var pageID int64
 	err = wrapsql.GetSingleRow(guid, rows, err, &pageID)
 	return pageID, err
 }
@@ -377,4 +378,359 @@ func (s PageStore) getUniquePageGUID(proposedPageGUID string, retry int) (string
 		return "", err
 	}
 	return getUniqueGUID(s.db, "PG", 15, "Page", proposedPageGUID, 0)
+}
+
+// GetPageProperties returns the page's properties.
+func (s PageStore) GetPageProperties(pageGUID string) (returnProperties []property.Property, returnErr error) {
+	if pageGUID == "" {
+		returnErr = errors.New("must provide pageGUID to get the page properties")
+		return
+	}
+	stringPP, stringPPOrder, err := s.getStringTypePageProperties(pageGUID)
+	if err != nil {
+		returnErr = errors.Wrap(err, "unable to get string type page properties")
+	}
+	numberPP, numberPPOrder, err := s.getNumberTypePageProperties(pageGUID)
+	if err != nil {
+		returnErr = errors.Wrap(err, "unable to get number type page properties")
+	}
+	stringIndex := 0
+	numberIndex := 0
+	for {
+		if stringIndex >= len(stringPPOrder) || numberIndex >= len(numberPPOrder) {
+			if stringIndex < len(stringPPOrder) {
+				returnProperties = append(returnProperties, stringPP[stringIndex])
+				stringIndex = stringIndex + 1
+			} else if numberIndex < len(numberPPOrder) {
+				returnProperties = append(returnProperties, numberPP[numberIndex])
+				numberIndex = numberIndex + 1
+			} else {
+				break
+			}
+		} else if stringPPOrder[stringIndex] < numberPPOrder[numberIndex] {
+			returnProperties = append(returnProperties, stringPP[stringIndex])
+			stringIndex = stringIndex + 1
+		} else {
+			returnProperties = append(returnProperties, numberPP[numberIndex])
+			numberIndex = numberIndex + 1
+		}
+	}
+	return
+}
+
+func (s PageStore) getStringTypePageProperties(pageGUID string) (returnProperties []property.Property, returnPropertiesOrder []int64, returnErr error) {
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"Property.ID", "Property.type", "Property.key", "PagePropertyString.value", "PagePropertyOrder.order"},
+		FromTable: "Page",
+		JoinClauses: []wrapsql.JoinClause{
+			{JoinTable: "PagePropertyString", On: wrapsql.OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyString.Page_ID"}},
+			{JoinTable: "Property", On: wrapsql.OnClause{LeftSide: "PagePropertyString.Property_ID", RightSide: "Property.ID"}},
+			{
+				JoinTable: "PagePropertyOrder",
+				On: wrapsql.OnClause{
+					Operator: "AND",
+					OnOperations: []wrapsql.OnClause{
+						{LeftSide: "PagePropertyOrder.Page_ID", RightSide: "Page.ID"},
+						{LeftSide: "PagePropertyOrder.Property_ID", RightSide: "Property.ID"},
+					},
+				},
+			},
+		},
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "Page.guid", Operator: "= ?"},
+				{LeftSide: "Page.deletedAt", Operator: "IS NULL"},
+				{LeftSide: "Property.deletedAt", Operator: "IS NULL"},
+				{LeftSide: "PagePropertyString.deletedAt", Operator: "IS NULL"},
+			},
+		},
+		OrderClause: wrapsql.OrderClause{
+			Column: "PagePropertyOrder.order",
+			SortBy: "ASC",
+		},
+	}
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), pageGUID)
+	if err != nil {
+		returnErr = err
+		return
+	}
+	if err := rows.Err(); err != nil {
+		returnErr = err
+		return
+	}
+	returnProperties = make([]property.Property, 0)
+	returnPropertiesOrder = make([]int64, 0)
+	defer rows.Close()
+	for rows.Next() {
+		var orderValue int64
+		dbp := property.DBProperty{}
+		err := rows.Scan(&dbp.ID, &dbp.Type, &dbp.Key, &dbp.StringValue, &orderValue)
+		if err != nil {
+			returnErr = err
+			return
+		}
+		p, err := dbp.GetProperty()
+		if err != nil {
+			returnErr = err
+			return
+		}
+		returnProperties = append(returnProperties, p)
+		returnPropertiesOrder = append(returnPropertiesOrder, orderValue)
+	}
+	return
+}
+
+func (s PageStore) getNumberTypePageProperties(pageGUID string) (returnProperties []property.Property, returnPropertiesOrder []int64, returnErr error) {
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"Property.ID", "Property.type", "Property.key", "PagePropertyNumber.value", "PagePropertyOrder.order"},
+		FromTable: "Page",
+		JoinClauses: []wrapsql.JoinClause{
+			{JoinTable: "PagePropertyNumber", On: wrapsql.OnClause{LeftSide: "Page.ID", RightSide: "PagePropertyNumber.Page_ID"}},
+			{JoinTable: "Property", On: wrapsql.OnClause{LeftSide: "PagePropertyNumber.Property_ID", RightSide: "Property.ID"}},
+			{
+				JoinTable: "PagePropertyOrder",
+				On: wrapsql.OnClause{
+					Operator: "AND",
+					OnOperations: []wrapsql.OnClause{
+						{LeftSide: "PagePropertyOrder.Page_ID", RightSide: "Page.ID"},
+						{LeftSide: "PagePropertyOrder.Property_ID", RightSide: "Property.ID"},
+					},
+				},
+			},
+		},
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "Page.guid", Operator: "= ?"},
+				{LeftSide: "Page.deletedAt", Operator: "IS NULL"},
+				{LeftSide: "Property.deletedAt", Operator: "IS NULL"},
+				{LeftSide: "PagePropertyNumber.deletedAt", Operator: "IS NULL"},
+			},
+		},
+		OrderClause: wrapsql.OrderClause{
+			Column: "PagePropertyOrder.order",
+			SortBy: "ASC",
+		},
+	}
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), pageGUID)
+	if err != nil {
+		returnErr = err
+		return
+	}
+	if err := rows.Err(); err != nil {
+		returnErr = err
+		return
+	}
+	returnProperties = make([]property.Property, 0)
+	returnPropertiesOrder = make([]int64, 0)
+	defer rows.Close()
+	for rows.Next() {
+		var orderValue int64
+		dbp := property.DBProperty{}
+		err := rows.Scan(&dbp.ID, &dbp.Type, &dbp.Key, &dbp.NumberValue, &orderValue)
+		if err != nil {
+			returnErr = err
+			return
+		}
+		p, err := dbp.GetProperty()
+		if err != nil {
+			returnErr = err
+			return
+		}
+		returnProperties = append(returnProperties, p)
+		returnPropertiesOrder = append(returnPropertiesOrder, orderValue)
+	}
+	return
+}
+
+// ReplacePageProperties replaces the current page's properties with the new properties.
+func (s PageStore) ReplacePageProperties(pageGUID string, pageProperties []property.Property) error {
+	// @TODO: all this needs to be wrapped into a transaction with rollback.
+	if pageGUID == "" {
+		return errors.New("must provide pageGUID to replace the page properties")
+	}
+	pageID, err := s.getPageID(pageGUID)
+	if err != nil {
+		return errors.Wrapf(err, "unable to get Page.ID for guid: %v", pageID)
+	}
+	err = s.setPagePropertyIDs(pageProperties)
+	if err != nil {
+		return errors.Wrap(err, "unable to get Property.ID for the pageProperties")
+	}
+	err = s.deletePageProperties(pageID)
+	if err != nil {
+		return errors.Wrap(err, "unable to delete page properties")
+	}
+	err = s.addPagePropertyOrders(pageID, pageProperties)
+	if err != nil {
+		return errors.Wrap(err, "unable to add page properties orders")
+	}
+	err = s.addTypedPageProperties(pageID, pageProperties, property.TypeNumber)
+	if err != nil {
+		return errors.Wrap(err, "unable to add number type page properties")
+	}
+	err = s.addTypedPageProperties(pageID, pageProperties, property.TypeString)
+	if err != nil {
+		return errors.Wrap(err, "unable to add string type page properties")
+	}
+	return nil
+}
+
+func (s PageStore) addPagePropertyOrders(pageID int64, pageProperties []property.Property) error {
+	query := wrapsql.BatchInsertQuery{
+		IntoTable: "PagePropertyOrder",
+	}
+	for i, pageProperty := range pageProperties {
+		query.BatchInjectedValues["Page_ID"] = append(query.BatchInjectedValues["Page_ID"], pageID)
+		query.BatchInjectedValues["Property_ID"] = append(query.BatchInjectedValues["Property_ID"], pageProperty.ID)
+		query.BatchInjectedValues["order"] = append(query.BatchInjectedValues["order"], i)
+	}
+	err := wrapsql.ExecBatchInsert(s.db, query)
+	if err != nil {
+		return errors.Wrap(err, "unable to insert page property order")
+	}
+	return nil
+}
+
+func (s PageStore) addTypedPageProperties(pageID int64, pageProperties []property.Property, propertyType property.Type) error {
+	scopedPageProperties := getTypedProperties(pageProperties, propertyType)
+	if len(scopedPageProperties) == 0 {
+		return nil
+	}
+	t := time.Now()
+	tableName := ""
+	switch propertyType {
+	case property.TypeNumber:
+		tableName = "PagePropertyNumber"
+	case property.TypeString:
+		tableName = "PagePropertyString"
+	default:
+		return errors.Errorf("unsupported page property type for instert: %v", propertyType)
+	}
+	query := wrapsql.BatchInsertQuery{
+		IntoTable: tableName,
+	}
+	for _, pageProperty := range scopedPageProperties {
+		query.BatchInjectedValues["Page_ID"] = append(query.BatchInjectedValues["Page_ID"], pageID)
+		query.BatchInjectedValues["Property_ID"] = append(query.BatchInjectedValues["Property_ID"], pageProperty.ID)
+		// @TODO: I don't actually think we need a Version_ID anywhere in the schema.  Since upping the version of a page will create a new Page.ID (even if it's the same Page.guid)
+		// then properties will be automatically linked to that new version because of the new Page.ID
+		query.BatchInjectedValues["Version_ID"] = append(query.BatchInjectedValues["Version_ID"], 0)
+		query.BatchInjectedValues["value"] = append(query.BatchInjectedValues["value"], pageProperty.Value)
+		// @TODO: figure out permission
+		query.BatchInjectedValues["permission"] = append(query.BatchInjectedValues["permission"], "PR")
+		query.BatchInjectedValues["createdAt"] = append(query.BatchInjectedValues["createdAt"], t)
+		query.BatchInjectedValues["updatedAt"] = append(query.BatchInjectedValues["updatedAt"], t)
+	}
+	err := wrapsql.ExecBatchInsert(s.db, query)
+	if err != nil {
+		return errors.Wrap(err, "unable to insert page property order")
+	}
+	return nil
+}
+
+func getTypedProperties(properties []property.Property, propertyType property.Type) (returnProperties []property.Property) {
+	returnProperties = make([]property.Property, 0)
+	for _, p := range properties {
+		if p.Type == propertyType {
+			returnProperties = append(returnProperties, p)
+		}
+	}
+	return
+}
+
+func (s PageStore) deletePageProperties(pageID int64) error {
+	genericWhereClause := wrapsql.WhereClause{
+		Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+			{LeftSide: "Page_ID", Operator: "= ?"},
+		},
+	}
+	query := wrapsql.DeleteQuery{
+		FromTable:   "PagePropertyOrder",
+		WhereClause: genericWhereClause,
+	}
+	err := wrapsql.ExecDelete(s.db, query, pageID)
+	if err != nil {
+		return errors.Wrap(err, "unable to delete from PagePropertyOrder")
+	}
+	query = wrapsql.DeleteQuery{
+		FromTable:   "PagePropertyNumber",
+		WhereClause: genericWhereClause,
+	}
+	err = wrapsql.ExecDelete(s.db, query, pageID)
+	if err != nil {
+		return errors.Wrap(err, "unable to delete from PagePropertyNumber")
+	}
+	query = wrapsql.DeleteQuery{
+		FromTable:   "PagePropertyString",
+		WhereClause: genericWhereClause,
+	}
+	err = wrapsql.ExecDelete(s.db, query, pageID)
+	if err != nil {
+		return errors.Wrap(err, "unable to delete from PagePropertyString")
+	}
+	return nil
+}
+
+func (s PageStore) setPagePropertyIDs(pageProperties []property.Property) error {
+	var keys []string
+	for _, p := range pageProperties {
+		keys = append(keys, p.Key)
+	}
+	pps, err := s.getPropertyIDs(keys)
+	if err != nil {
+		return err
+	}
+	for _, pp := range pps {
+		for i := range pageProperties {
+			if pageProperties[i].Key == pp.Key {
+				pageProperties[i].ID = pp.ID
+			}
+		}
+	}
+	for i, p := range pageProperties {
+		if p.ID == 0 {
+			return errors.Errorf("unable to find the ID for the property at %v with key %v", i, p.Key)
+		}
+	}
+	return nil
+}
+
+func (s PageStore) getPropertyIDs(propertyKeys []string) (returnProperties []property.Property, returnErr error) {
+	for i, propertyKey := range propertyKeys {
+		if propertyKey == "" {
+			return nil, errors.Errorf("property key at %v must be non-zero value", i)
+		}
+	}
+	statement := wrapsql.SelectStatement{
+		Selectors: []string{"ID", "key"},
+		FromTable: "Property",
+		WhereClause: wrapsql.WhereClause{
+			Operator: "AND", WhereOperations: []wrapsql.WhereOperation{
+				{LeftSide: "key", Operator: "IN (" + wrapsql.GetNValueStubList(len(propertyKeys)) + ")"},
+			},
+		},
+	}
+	rows, err := s.db.Query(wrapsql.GetSelectString(statement), propertyKeys)
+	if err != nil {
+		returnErr = err
+		return
+	}
+	if err := rows.Err(); err != nil {
+		returnErr = err
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		p := property.Property{}
+		err := rows.Scan(&p.ID, &p.Key)
+		if err != nil {
+			returnErr = err
+			return
+		}
+		returnProperties = append(returnProperties, p)
+	}
+	if len(returnProperties) == 0 {
+		returnProperties = make([]property.Property, 0)
+	}
+	return
 }

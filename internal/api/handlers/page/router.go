@@ -48,5 +48,15 @@ func PageRouterHandlers(apiPath string, pageService PageService) []api.RouterHan
 		Endpoint: fmt.Sprintf("/%v/pages/:%v/full", apiPath, PageIDRouteKey),
 		Handle:   handler.GetEntirePage,
 	})
+	routerHandlers = append(routerHandlers, api.RouterHandler{
+		Method:   http.MethodGet,
+		Endpoint: fmt.Sprintf("/%v/pages/:%v/properties", apiPath, PageIDRouteKey),
+		Handle:   handler.GetPageProperties,
+	})
+	routerHandlers = append(routerHandlers, api.RouterHandler{
+		Method:   http.MethodPut,
+		Endpoint: fmt.Sprintf("/%v/pages/:%v/properties", apiPath, PageIDRouteKey),
+		Handle:   handler.ReplacePageProperties,
+	})
 	return routerHandlers
 }

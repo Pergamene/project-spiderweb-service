@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/models/pagetemplate"
+	"github.com/Pergamene/project-spiderweb-service/internal/models/property"
 	"github.com/Pergamene/project-spiderweb-service/internal/models/version"
 
 	"github.com/Pergamene/project-spiderweb-service/internal/api/handlers/nextbatch"
@@ -26,6 +27,8 @@ type PageService interface {
 	GetPages(ctx context.Context, params pageservice.GetPagesParams) ([]page.Page, int, string, error)
 	GetPage(ctx context.Context, params pageservice.GetPageParams) (page.Page, error)
 	GetEntirePage(ctx context.Context, params pageservice.GetEntirePageParams) (page.Page, error)
+	GetPageProperties(ctx context.Context, params pageservice.GetPagePropertiesParams) ([]property.Property, error)
+	ReplacePageProperties(ctx context.Context, params pageservice.ReplacePagePropertiesParams) error
 }
 
 // PageHandler is the handler for the associated API
@@ -247,6 +250,67 @@ func (h PageHandler) DeletePage(w http.ResponseWriter, r *http.Request, p httpro
 			GUID: request.GUID,
 		},
 		UserID: authData.UserID,
+	})
+	if _, ok := err.(*storeerror.NotAuthorized); ok {
+		api.RespondWith(r, w, http.StatusUnauthorized, &api.FailedAuthorization{}, err)
+		return
+	}
+	if err != nil {
+		api.RespondWith(r, w, http.StatusInternalServerError, &api.InternalErr{}, err)
+		return
+	}
+	api.RespondWith(r, w, http.StatusOK, nil, nil)
+}
+
+// GetPageProperties see Service for more details
+func (h PageHandler) GetPageProperties(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	request, err := NewGetPagePropertiesRequest(r, p)
+	if err != nil {
+		api.RespondWith(r, w, http.StatusBadRequest, err, err)
+		return
+	}
+	ctx := r.Context()
+	authData, err := api.GetDataFromContext(ctx)
+	if err != nil {
+		api.RespondWith(r, w, http.StatusInternalServerError, &api.InternalErr{}, errors.Wrap(err, "failed to get auth data"))
+		return
+	}
+	records, err := h.PageService.GetPageProperties(ctx, pageservice.GetPagePropertiesParams{
+		Page: page.Page{
+			GUID: request.GUID,
+		},
+		UserID: authData.UserID,
+	})
+	if _, ok := err.(*storeerror.NotAuthorized); ok {
+		api.RespondWith(r, w, http.StatusUnauthorized, &api.FailedAuthorization{}, err)
+		return
+	}
+	if err != nil {
+		api.RespondWith(r, w, http.StatusInternalServerError, &api.InternalErr{}, err)
+		return
+	}
+	api.RespondWith(r, w, http.StatusOK, records, nil)
+}
+
+// ReplacePageProperties see Service for more details
+func (h PageHandler) ReplacePageProperties(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	request, err := NewReplacePagePropertiesRequest(r, p)
+	if err != nil {
+		api.RespondWith(r, w, http.StatusBadRequest, err, err)
+		return
+	}
+	ctx := r.Context()
+	authData, err := api.GetDataFromContext(ctx)
+	if err != nil {
+		api.RespondWith(r, w, http.StatusInternalServerError, &api.InternalErr{}, errors.Wrap(err, "failed to get auth data"))
+		return
+	}
+	err = h.PageService.ReplacePageProperties(ctx, pageservice.ReplacePagePropertiesParams{
+		Page: page.Page{
+			GUID: request.GUID,
+		},
+		Properties: request.Properties,
+		UserID:     authData.UserID,
 	})
 	if _, ok := err.(*storeerror.NotAuthorized); ok {
 		api.RespondWith(r, w, http.StatusUnauthorized, &api.FailedAuthorization{}, err)

@@ -6,6 +6,12 @@ import (
 	"strings"
 )
 
+// BatchInsertQuery is used to generate an insert query for multiple value batches.
+type BatchInsertQuery struct {
+	IntoTable           string
+	BatchInjectedValues BatchInjectedValues
+}
+
 // InsertQuery is used to generate an insert query
 type InsertQuery struct {
 	IntoTable      string
@@ -19,8 +25,18 @@ type UpdateQuery struct {
 	WhereClause    WhereClause
 }
 
-// InjectedValues are a mapping of key/value pairs where the key is the name of the table column and the value is it's injected value.
+// DeleteQuery is used to generate a delete query
+type DeleteQuery struct {
+	FromTable   string
+	JoinClauses []JoinClause
+	WhereClause WhereClause
+}
+
+// InjectedValues are a mapping of key/value pairs where the key is the name of the table column and the value is its injected value.
 type InjectedValues map[string]interface{}
+
+// BatchInjectedValues are a mapping of key/value pairs where the key is the name of the table column and the value is a slice of its injected value where each element is part of its indexed value set.
+type BatchInjectedValues map[string][]interface{}
 
 // SelectStatement is used to generate a select statement
 type SelectStatement struct {
@@ -28,6 +44,7 @@ type SelectStatement struct {
 	FromTable   string
 	JoinClauses []JoinClause
 	WhereClause WhereClause
+	OrderClause OrderClause
 	Limit       int
 }
 
@@ -38,9 +55,13 @@ type JoinClause struct {
 }
 
 // OnClause is used to generate an ON clause
+// If the OnClause has one "ON X = Y", then use LeftSide RightSide
+// If the OnCalsue is "ON (X = Y) AND | OR (Z = A)", then use Operator and OnOperations
 type OnClause struct {
-	LeftSide  string
-	RightSide string
+	Operator     string // either AND or OR
+	OnOperations []OnClause
+	LeftSide     string
+	RightSide    string
 }
 
 // WhereOperation is used to generate a WHERE operation, such as "`ID` = ?"
@@ -56,6 +77,12 @@ type WhereClause struct {
 	WhereOperations []WhereOperation
 }
 
+// OrderClause is used to generate an ORDER BY clause.
+type OrderClause struct {
+	Column string
+	SortBy string
+}
+
 // GetSelectString returns a statement string intended for a SELECT call.
 func GetSelectString(ss SelectStatement) string {
 	selectString := getEscapedSequence(ss.Selectors)
@@ -67,6 +94,9 @@ func GetSelectString(ss SelectStatement) string {
 	}
 	if whereString != "" {
 		statement = statement + fmt.Sprintf(" WHERE %v", whereString)
+	}
+	if ss.OrderClause.Column != "" {
+		statement = statement + fmt.Sprintf(" ORDER BY %v %v", getEscapedString(ss.OrderClause.Column), ss.OrderClause.SortBy)
 	}
 	if ss.Limit != 0 {
 		statement = statement + fmt.Sprintf(" LIMIT %v", ss.Limit)
@@ -104,7 +134,18 @@ func GetJoinsString(joins []JoinClause) string {
 }
 
 func getJoinString(join JoinClause) string {
-	return fmt.Sprintf("JOIN %v ON %v = %v", join.JoinTable, getEscapedString(join.On.LeftSide), getEscapedString(join.On.RightSide))
+	return fmt.Sprintf("JOIN %v ON %v", join.JoinTable, getOnString(join.On))
+}
+
+func getOnString(on OnClause) string {
+	if on.LeftSide != "" {
+		return fmt.Sprintf("%v = %v", getEscapedString(on.LeftSide), getEscapedString(on.RightSide))
+	}
+	var onOperations []string
+	for _, onOperation := range on.OnOperations {
+		onOperations = append(onOperations, getOnString(onOperation))
+	}
+	return strings.Join(onOperations, " "+on.Operator+" ")
 }
 
 // GetWhereString returns a string for the WHERE clause in the query
@@ -144,6 +185,38 @@ func getOrderedInsertValues(ivs InjectedValues) (keys []string, valueStubs []str
 	return
 }
 
+// GetBatchInsertString returns a statement string intended for an INSERT call with batch values.
+func GetBatchInsertString(iq BatchInsertQuery) (string, []interface{}) {
+	keys, batchValueStubs, values := getOrderedBatchInsertValues(iq.BatchInjectedValues)
+	keysString := getEscapedSequence(keys)
+	var batchValueStubsStrings []string
+	for _, valueStubs := range batchValueStubs {
+		batchValueStubsStrings = append(batchValueStubsStrings, "("+strings.Join(valueStubs, ",")+")")
+	}
+	valueStubsString := strings.Join(batchValueStubsStrings, ",")
+	return fmt.Sprintf("INSERT INTO %v (%v) VALUES %v", iq.IntoTable, keysString, valueStubsString), values
+}
+
+func getOrderedBatchInsertValues(ivs BatchInjectedValues) (keys []string, batchValueStubs [][]string, values []interface{}) {
+	for key := range ivs {
+		keys = append(keys, key)
+	}
+	for _, batch := range ivs {
+		var valueStubs []string
+		for range batch {
+			valueStubs = append(valueStubs, "?")
+		}
+		batchValueStubs = append(batchValueStubs, valueStubs)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		for _, value := range ivs[key] {
+			values = append(values, value)
+		}
+	}
+	return
+}
+
 // GetUpdateString returns a statement string intended for an UPDATE call.
 func GetUpdateString(iq UpdateQuery, whereClauseInjectedValues ...interface{}) (string, []interface{}) {
 	keys, _, values := getOrderedInsertValues(iq.InjectedValues)
@@ -160,4 +233,35 @@ func GetUpdateString(iq UpdateQuery, whereClauseInjectedValues ...interface{}) (
 		statement = statement + fmt.Sprintf(" WHERE %v", whereString)
 	}
 	return statement, values
+}
+
+// GetDeleteString returns a statement string intended for an UPDATE call.
+func GetDeleteString(iq DeleteQuery, whereClauseInjectedValues ...interface{}) (string, []interface{}) {
+	var values []interface{}
+	values = append(values, whereClauseInjectedValues...)
+	whereString := GetWhereString(iq.WhereClause)
+	statement := fmt.Sprintf("DELETE FROM %v", iq.FromTable)
+	joinString := GetJoinsString(iq.JoinClauses)
+	if joinString != "" {
+		statement = statement + " " + joinString
+	}
+	if whereString != "" {
+		statement = statement + fmt.Sprintf(" WHERE %v", whereString)
+	}
+	return statement, values
+}
+
+// GetNValueStubList returns a string-formed list of "?" of n length.
+// e.g. if n = 3 --> "?,?,?"
+func GetNValueStubList(n int) string {
+	i := 0
+	var stubs []string
+	for {
+		if i >= n {
+			break
+		}
+		stubs = append(stubs, "?")
+		i = i + 1
+	}
+	return strings.Join(stubs, ",")
 }
